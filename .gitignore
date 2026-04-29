@@ -1,0 +1,59 @@
+# Monorepo — merged from bitik-web, bitik-mobile, backend
+
+# Dependencies
+node_modules/
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# Backend (Go)
+/backend/.env
+/backend/.env.local
+/backend/.env.prod
+/backend/internal/.env
+*.test
+/backend/bin/
+
+# Next.js (bitik-web)
+.next/
+out/
+bitik-web/build
+coverage/
+
+# Expo / React Native (bitik-mobile)
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+.metro-health-check*
+app-example
+/bitik-mobile/ios
+/bitik-mobile/android
+
+# OS / misc
+.DS_Store
+*.pem
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Env (local overrides)
+.env*.local
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts

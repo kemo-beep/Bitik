@@ -1,0 +1,88 @@
+name: web-ci
+
+on:
+  pull_request:
+  push:
+    branches: ["main", "master"]
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: bitik-web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: bitik-web/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Generate API types
+        run: npm run api:gen
+
+      - name: OpenAPI contract sanity
+        run: npm run test:contract
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit/component tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Playwright smoke
+        env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
+          NEXT_PUBLIC_ANALYTICS_ENABLED: "1"
+        run: |
+          npm run build
+          npm run start -- --port 3000 &
+          npx wait-on http://127.0.0.1:3000
+          npm run test:smoke
+      - name: Playwright critical flows
+        env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
+          NEXT_PUBLIC_ANALYTICS_ENABLED: "1"
+        run: |
+          npm run build
+          npm run start -- --port 3000 &
+          npx wait-on http://127.0.0.1:3000
+          npm run test:e2e -- --grep @critical
+
+  docker-dry-run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build web image (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./bitik-web
+          file: ./bitik-web/Dockerfile
+          push: false
+          tags: bitik-web:ci
+          build-args: |
+            NEXT_PUBLIC_API_BASE_URL=https://api.ci.localhost/api/v1
+            NEXT_PUBLIC_ASSET_BASE_URL=https://api.ci.localhost
+            NEXT_PUBLIC_WS_BASE_URL=wss://ws.ci.localhost
+            NEXT_PUBLIC_OAUTH_REDIRECT_BASE_URL=https://web.ci.localhost
+            NEXT_PUBLIC_FEATURE_FLAGS={}
+            NEXT_PUBLIC_ANALYTICS_ENABLED=0
+            NEXT_PUBLIC_SENTRY_DSN=
+

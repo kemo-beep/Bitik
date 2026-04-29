@@ -1,0 +1,45 @@
+name: Backend CD Production
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy-production:
+    runs-on: ubuntu-latest
+    environment: production
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.x"
+          cache-dependency-path: backend/go.sum
+      - name: Download modules
+        run: go mod download
+      - name: Migration gate
+        env:
+          BITIK_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+        run: |
+          go run ./cmd/migrate up
+          go run ./cmd/migrate status
+      - name: Deploy
+        env:
+          DEPLOY_HOST: ${{ secrets.PROD_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.PROD_DEPLOY_USER }}
+          DEPLOY_PATH: ${{ secrets.PROD_DEPLOY_PATH }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: bash ./scripts/deploy.sh
+      - name: Smoke tests
+        env:
+          SMOKE_BASE_URL: ${{ secrets.PROD_BASE_URL }}
+        run: bash ./scripts/smoke.sh
+      - name: Rollback on failure
+        if: failure()
+        env:
+          DEPLOY_HOST: ${{ secrets.PROD_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.PROD_DEPLOY_USER }}
+          DEPLOY_PATH: ${{ secrets.PROD_DEPLOY_PATH }}
+          ROLLBACK_IMAGE_TAG: ${{ secrets.PROD_LAST_KNOWN_GOOD_TAG }}
+        run: bash ./scripts/rollback.sh

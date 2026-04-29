@@ -1,0 +1,42 @@
+name: Backend CD Staging
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main", "master"]
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-cd-staging.yml"
+
+jobs:
+  deploy-staging:
+    runs-on: ubuntu-latest
+    environment: staging
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.x"
+          cache-dependency-path: backend/go.sum
+      - name: Download modules
+        run: go mod download
+      - name: Migration gate
+        env:
+          BITIK_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+        run: |
+          go run ./cmd/migrate up
+          go run ./cmd/migrate status
+      - name: Deploy
+        env:
+          DEPLOY_HOST: ${{ secrets.STAGING_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.STAGING_DEPLOY_USER }}
+          DEPLOY_PATH: ${{ secrets.STAGING_DEPLOY_PATH }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: bash ./scripts/deploy.sh
+      - name: Smoke tests
+        env:
+          SMOKE_BASE_URL: ${{ secrets.STAGING_BASE_URL }}
+        run: bash ./scripts/smoke.sh

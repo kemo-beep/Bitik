@@ -1,0 +1,179 @@
+version: "2"
+sql:
+  - engine: "postgresql"
+    schema: "db/migrations"
+    queries: "db/queries/auth"
+    gen:
+      go:
+        package: "authstore"
+        out: "internal/store/auth"
+        sql_package: "pgx/v5"
+        emit_json_tags: true
+        emit_db_tags: true
+        emit_prepared_queries: false
+        emit_interface: true
+  - engine: "postgresql"
+    schema: "db/migrations"
+    queries: "db/queries/users"
+    gen:
+      go:
+        package: "userstore"
+        out: "internal/store/users"
+        sql_package: "pgx/v5"
+        emit_json_tags: true
+        emit_db_tags: true
+        emit_interface: true
+  - engine: "postgresql"
+    schema: "db/migrations"
+    queries: "db/queries/catalog"
+    gen:
+      go:
+        package: "catalogstore"
+        out: "internal/store/catalog"
+        sql_package: "pgx/v5"
+        emit_json_tags: true
+        emit_db_tags: true
+        emit_interface: true
+  - engine: "postgresql"
+    schema: "db/migrations"
+    queries: "db/queries/search"
+    gen:
+      go:
+        package: "searchstore"
+        out: "internal/store/search"
+        sql_package: "pgx/v5"
+        emit_json_tags: true
+        emit_db_tags: true
+        emit_interface: true
+  - engine: "postgresql"
+    schema: "db/migrations"
+    queries: "db/queries/sellers"
+    gen:
+      go:
+        package: "sellerstore"
+        out: "internal/store/sellers"
+        sql_package: "pgx/v5"
+        emit_json_tags: true
+        emit_db_tags: true
+        emit_interface: true
+  - engine: "postgresql"
+    schema: "db/migrations"
+    queries: "db/queries/orders"
+    gen:
+      go:
+        package: "orderstore"
+        out: "internal/store/orders"
+        sql_package: "pgx/v5"
+        emit_json_tags: true
+        emit_db_tags: true
+        emit_interface: true
+  - engine: "postgresql"
+    schema: "db/migrations"
+    queries: "db/queries/promotions"
+    gen:
+      go:
+        package: "promostore"
+        out: "internal/store/promotions"
+        sql_package: "pgx/v5"
+        emit_json_tags: true
+        emit_db_tags: true
+        emit_interface: true
+  - engine: "postgresql"
+    schema: "db/migrations"
+    queries: "db/queries/reviews"
+    gen:
+      go:
+        package: "reviewstore"
+        out: "internal/store/reviews"
+        sql_package: "pgx/v5"
+        emit_json_tags: true
+        emit_db_tags: true
+        emit_interface: true
+  - engine: "postgresql"
+    schema: "db/migrations"
+    queries: "db/queries/notifications"
+    gen:
+      go:
+        package: "notifystore"
+        out: "internal/store/notifications"
+        sql_package: "pgx/v5"
+        emit_json_tags: true
+        emit_db_tags: true
+        emit_interface: true
+  - engine: "postgresql"
+    schema: "db/migrations"
+    queries: "db/queries/chat"
+    gen:
+      go:
+        package: "chatstore"
+        out: "internal/store/chat"
+        sql_package: "pgx/v5"
+        emit_json_tags: true
+        emit_db_tags: true
+        emit_interface: true
+  - engine: "postgresql"
+    schema: "db/migrations"
+    queries: "db/queries/cms"
+    gen:
+      go:
+        package: "cmsstore"
+        out: "internal/store/cms"
+        sql_package: "pgx/v5"
+        emit_json_tags: true
+        emit_db_tags: true
+        emit_interface: true
+  - engine: "postgresql"
+    schema: "db/migrations"
+    queries: "db/queries/payments"
+    gen:
+      go:
+        package: "paymentstore"
+        out: "internal/store/payments"
+        sql_package: "pgx/v5"
+        emit_json_tags: true
+        emit_db_tags: true
+        emit_interface: true
+  - engine: "postgresql"
+    schema: "db/migrations"
+    queries: "db/queries/shipping"
+    gen:
+      go:
+        package: "shippingstore"
+        out: "internal/store/shipping"
+        sql_package: "pgx/v5"
+        emit_json_tags: true
+        emit_db_tags: true
+        emit_interface: true
+  - engine: "postgresql"
+    schema: "db/migrations"
+    queries: "db/queries/system"
+    gen:
+      go:
+        package: "systemstore"
+        out: "internal/store/system"
+        sql_package: "pgx/v5"
+        emit_json_tags: true
+        emit_db_tags: true
+        emit_interface: true
+  - engine: "postgresql"
+    schema: "db/migrations"
+    queries: "db/queries/rbac"
+    gen:
+      go:
+        package: "rbacstore"
+        out: "internal/store/rbac"
+        sql_package: "pgx/v5"
+        emit_json_tags: true
+        emit_db_tags: true
+        emit_interface: true
+  - engine: "postgresql"
+    schema: "db/migrations"
+    queries: "db/queries/worker"
+    gen:
+      go:
+        package: "workerstore"
+        out: "internal/store/worker"
+        sql_package: "pgx/v5"
+        emit_json_tags: true
+        emit_db_tags: true
+        emit_interface: true

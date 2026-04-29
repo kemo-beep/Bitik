@@ -1,0 +1,86 @@
+name: web-cd-production
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main", "master"]
+    paths:
+      - "bitik-web/**"
+      - ".github/workflows/web-cd-production.yml"
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: web-cd-production
+  cancel-in-progress: false
+
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Image name (lowercase for GHCR)
+        id: meta
+        run: |
+          owner_lc=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          echo "image=ghcr.io/${owner_lc}/bitik-web" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tags
+        id: tags
+        run: |
+          sha_short=$(echo "${{ github.sha }}" | cut -c1-7)
+          IMG="${{ steps.meta.outputs.image }}"
+          {
+            echo "${IMG}:prod-${sha_short}"
+            echo "${IMG}:latest"
+          } > /tmp/web-tags.txt
+          if [ "${{ github.event_name }}" = "release" ] && [ -n "${{ github.event.release.tag_name }}" ]; then
+            echo "${IMG}:${{ github.event.release.tag_name }}" >> /tmp/web-tags.txt
+          fi
+          {
+            echo "tag_sha=prod-${sha_short}"
+            echo 'tags<<EOF'
+            cat /tmp/web-tags.txt
+            echo EOF
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Build and push production image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./bitik-web
+          file: ./bitik-web/Dockerfile
+          push: true
+          tags: ${{ steps.tags.outputs.tags }}
+          build-args: |
+            NEXT_PUBLIC_API_BASE_URL=${{ secrets.PRODUCTION_NEXT_PUBLIC_API_BASE_URL }}
+            NEXT_PUBLIC_ASSET_BASE_URL=${{ secrets.PRODUCTION_NEXT_PUBLIC_ASSET_BASE_URL }}
+            NEXT_PUBLIC_WS_BASE_URL=${{ secrets.PRODUCTION_NEXT_PUBLIC_WS_BASE_URL }}
+            NEXT_PUBLIC_OAUTH_REDIRECT_BASE_URL=${{ secrets.PRODUCTION_NEXT_PUBLIC_OAUTH_REDIRECT_BASE_URL }}
+            NEXT_PUBLIC_FEATURE_FLAGS=${{ vars.PRODUCTION_NEXT_PUBLIC_FEATURE_FLAGS || '{}' }}
+            NEXT_PUBLIC_ANALYTICS_ENABLED=${{ vars.PRODUCTION_NEXT_PUBLIC_ANALYTICS_ENABLED || '1' }}
+            NEXT_PUBLIC_SENTRY_DSN=${{ secrets.PRODUCTION_NEXT_PUBLIC_SENTRY_DSN || '' }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Summary
+        run: |
+          echo "Tags pushed:" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "${{ steps.tags.outputs.tags }}" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"

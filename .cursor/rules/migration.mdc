@@ -1,0 +1,24 @@
+---
+description: Enforce Goose create workflow for SQL migrations
+alwaysApply: true
+---
+
+# Goose Migration Generation Rule
+
+When generating a new SQL migration in `user_portal/database/migrations`, always create it with Goose first, then edit the generated file.
+
+- Required command pattern:
+  - `goose -dir ./database/migrations create <action>_<table_name>_table sql`
+- Example:
+  - `goose -dir ./database/migrations create create_ai_quota_wallets_table sql`
+- Do not manually invent timestamped migration filenames.
+- Do not create migration files directly without running Goose create.
+- Keep Goose format:
+  - `-- +goose Up`
+  - `-- +goose StatementBegin`
+  - SQL...
+  - `-- +goose StatementEnd`
+  - `-- +goose Down`
+  - `-- +goose StatementBegin`
+  - SQL rollback...
+  - `-- +goose StatementEnd`

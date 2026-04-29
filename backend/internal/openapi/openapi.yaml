@@ -1,0 +1,2225 @@
+openapi: 3.0.3
+info:
+  title: Bitik Backend API
+  version: 0.1.0
+  description: Baseline OpenAPI contract for the Bitik marketplace backend.
+servers:
+  - url: http://localhost:8080
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        "200":
+          description: Application is alive.
+  /ready:
+    get:
+      summary: Readiness check
+      responses:
+        "200":
+          description: Application dependencies are ready.
+        "503":
+          description: One or more dependencies are unavailable.
+  /metrics:
+    get:
+      summary: Prometheus metrics
+      responses:
+        "200":
+          description: Prometheus metrics payload.
+  /version:
+    get:
+      summary: Version metadata
+      responses:
+        "200":
+          description: Application version metadata.
+  /api/v1:
+    get:
+      summary: API root
+      responses:
+        "200":
+          description: API metadata.
+
+  /api/v1/auth/register:
+    post:
+      summary: Register a new account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, minLength: 8 }
+      responses:
+        "200":
+          description: Access/refresh tokens
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeAuthPair"
+
+  /api/v1/auth/login:
+    post:
+      summary: Login with email/password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+      responses:
+        "200":
+          description: Access/refresh tokens
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeAuthPair"
+
+  /api/v1/auth/logout:
+    post:
+      summary: Logout (revoke refresh token)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties:
+                refresh_token: { type: string }
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeOk"
+
+  /api/v1/auth/refresh-token:
+    post:
+      summary: Refresh access token (rotation)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties:
+                refresh_token: { type: string }
+      responses:
+        "200":
+          description: New access/refresh tokens
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeAuthPair"
+
+  /api/v1/auth/forgot-password:
+    post:
+      summary: Request password reset token (always ok)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        "200":
+          description: Request accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeOk"
+
+  /api/v1/auth/reset-password:
+    post:
+      summary: Reset password using reset token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, new_password]
+              properties:
+                token: { type: string }
+                new_password: { type: string, minLength: 8 }
+      responses:
+        "200":
+          description: Password reset completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeOk"
+
+  /api/v1/auth/verify-email:
+    post:
+      summary: Verify email using verification token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token: { type: string }
+      responses:
+        "200":
+          description: Email verified
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeOk"
+
+  /api/v1/auth/resend-email-verification:
+    post:
+      summary: Resend email verification (authenticated)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Verification resent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeOk"
+
+  /api/v1/auth/send-phone-otp:
+    post:
+      summary: Send phone OTP (authenticated)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone]
+              properties:
+                phone: { type: string }
+      responses:
+        "200":
+          description: OTP sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeOk"
+
+  /api/v1/auth/verify-phone-otp:
+    post:
+      summary: Verify phone OTP (authenticated)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone, otp]
+              properties:
+                phone: { type: string }
+                otp: { type: string }
+      responses:
+        "200":
+          description: Phone verified
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeOk"
+
+  /api/v1/analytics/events:
+    post:
+      summary: Ingest analytics event payload (authenticated user)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "202": { description: Event accepted for async processing. }
+
+  /api/v1/users/me:
+    get:
+      summary: Get current user
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopePublicUser"
+    delete:
+      summary: Delete current user account (soft delete)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Account deleted. }
+
+  /api/v1/users/me/profile:
+    get:
+      summary: Get current user profile
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Profile. }
+    patch:
+      summary: Update current user profile
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Updated profile. }
+
+  /api/v1/users/me/sessions:
+    get:
+      summary: List user sessions
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Sessions. }
+
+  /api/v1/users/me/sessions/{session_id}:
+    delete:
+      summary: Revoke a user session
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: session_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Session revoked. }
+
+  /api/v1/users/me/devices:
+    get:
+      summary: List user devices
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Devices. }
+
+  /api/v1/users/me/devices/{device_id}:
+    delete:
+      summary: Revoke a user device
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: device_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Device revoked. }
+  /api/v1/public/home:
+    get:
+      summary: Public homepage payload
+      responses:
+        "200": { description: Homepage banners, sections, and featured products. }
+  /api/v1/public/home/sections:
+    get:
+      summary: Public homepage sections
+      responses:
+        "200": { description: Public CMS-backed homepage sections. }
+  /api/v1/public/banners:
+    get:
+      summary: Public banners
+      parameters:
+        - { name: placement, in: query, schema: { type: string } }
+        - { name: page, in: query, schema: { type: integer, minimum: 1 } }
+        - { name: per_page, in: query, schema: { type: integer, minimum: 1, maximum: 100 } }
+      responses:
+        "200": { description: Active banners for a placement. }
+  /api/v1/public/categories:
+    get:
+      summary: Public categories
+      responses:
+        "200": { description: Active category list. }
+  /api/v1/public/categories/{category_id}:
+    get:
+      summary: Public category detail
+      parameters:
+        - { name: category_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Category detail. }
+        "404": { description: Category not found. }
+  /api/v1/public/categories/{category_id}/products:
+    get:
+      summary: Products in category
+      parameters:
+        - { name: category_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: sort, in: query, schema: { type: string, enum: [newest, price_asc, price_desc, popular, rating] } }
+      responses:
+        "200": { description: Paginated products. }
+  /api/v1/public/brands:
+    get:
+      summary: Public brands
+      responses:
+        "200": { description: Active brand list. }
+  /api/v1/public/brands/{brand_id}:
+    get:
+      summary: Public brand detail
+      parameters:
+        - { name: brand_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Brand detail. }
+        "404": { description: Brand not found. }
+  /api/v1/public/brands/{brand_id}/products:
+    get:
+      summary: Products by brand
+      parameters:
+        - { name: brand_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Paginated products. }
+  /api/v1/public/products:
+    get:
+      summary: Public product list
+      parameters:
+        - { name: q, in: query, schema: { type: string } }
+        - { name: category_id, in: query, schema: { type: string, format: uuid } }
+        - { name: brand_id, in: query, schema: { type: string, format: uuid } }
+        - { name: seller_id, in: query, schema: { type: string, format: uuid } }
+        - { name: min_price_cents, in: query, schema: { type: integer } }
+        - { name: max_price_cents, in: query, schema: { type: integer } }
+        - { name: sort, in: query, schema: { type: string, enum: [newest, price_asc, price_desc, popular, rating] } }
+        - { name: page, in: query, schema: { type: integer, minimum: 1 } }
+        - { name: per_page, in: query, schema: { type: integer, minimum: 1, maximum: 100 } }
+      responses:
+        "200": { description: Paginated products with pagination metadata. }
+  /api/v1/public/products/slug/{slug}:
+    get:
+      summary: Public product detail by slug
+      parameters:
+        - { name: slug, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Product detail with images and variants. }
+        "404": { description: Product not found. }
+  /api/v1/public/products/{product_id}:
+    get:
+      summary: Public product detail
+      parameters:
+        - { name: product_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Product detail with images and variants. }
+        "404": { description: Product not found. }
+  /api/v1/public/products/{product_id}/variants:
+    get:
+      summary: Public product variants
+      parameters:
+        - { name: product_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Active variants. }
+  /api/v1/public/products/{product_id}/reviews:
+    get:
+      summary: Public product reviews
+      parameters:
+        - { name: product_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Visible product reviews. }
+  /api/v1/public/products/{product_id}/related:
+    get:
+      summary: Related products
+      parameters:
+        - { name: product_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Related active products. }
+  /api/v1/public/sellers/slug/{slug}:
+    get:
+      summary: Public seller detail by slug
+      parameters:
+        - { name: slug, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Seller detail. }
+        "404": { description: Seller not found. }
+  /api/v1/public/sellers/{seller_id}:
+    get:
+      summary: Public seller detail
+      parameters:
+        - { name: seller_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Seller detail. }
+        "404": { description: Seller not found. }
+  /api/v1/public/sellers/{seller_id}/products:
+    get:
+      summary: Public seller products
+      parameters:
+        - { name: seller_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Paginated seller products. }
+  /api/v1/public/sellers/{seller_id}/reviews:
+    get:
+      summary: Public seller reviews
+      parameters:
+        - { name: seller_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Visible seller reviews. }
+  /api/v1/media/upload:
+    post:
+      summary: Upload seller/admin media
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "201": { description: Uploaded media metadata. }
+  /api/v1/media/upload/presigned-url:
+    post:
+      summary: Create presigned seller/admin media upload URL
+      security: [{ bearerAuth: [] }]
+      responses:
+        "201": { description: Presigned upload URL and reserved media metadata. }
+  /api/v1/media/upload/presigned-complete:
+    post:
+      summary: Complete and validate a presigned media upload
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Validated media metadata. }
+  /api/v1/media/files:
+    get:
+      summary: List current user's media files
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Media files. }
+  /api/v1/media/files/{file_id}:
+    get:
+      summary: Get media file metadata
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: file_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Media file metadata. }
+        "404": { description: Media file not found. }
+    delete:
+      summary: Delete media file
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: file_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "204": { description: Media file deleted. }
+  /api/v1/seller/apply:
+    post:
+      summary: Create or submit seller application
+      security: [{ bearerAuth: [] }]
+      responses:
+        "201": { description: Seller application created. }
+  /api/v1/seller/application:
+    get:
+      summary: Get current seller application
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Current seller application. }
+    patch:
+      summary: Update current seller application
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Updated seller application. }
+  /api/v1/seller/documents:
+    post:
+      summary: Add seller application or account document
+      security: [{ bearerAuth: [] }]
+      responses:
+        "201": { description: Seller document created. }
+  /api/v1/seller/documents/{document_id}:
+    delete:
+      summary: Delete seller document
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: document_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "204": { description: Seller document deleted. }
+  /api/v1/seller/me:
+    get:
+      summary: Get current seller profile
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Seller profile. }
+    patch:
+      summary: Update current seller profile
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Updated seller profile. }
+  /api/v1/seller/me/settings:
+    patch:
+      summary: Update seller settings
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Updated seller settings. }
+  /api/v1/seller/me/media:
+    patch:
+      summary: Update seller logo or banner URLs
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Updated seller media. }
+  /api/v1/seller/dashboard:
+    get:
+      summary: Seller dashboard stats, chart, top products, orders, and low stock
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Seller dashboard payload. }
+  /api/v1/seller/products:
+    get:
+      summary: List seller products
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Paginated seller products. }
+    post:
+      summary: Create seller product
+      security: [{ bearerAuth: [] }]
+      responses:
+        "201": { description: Product created. }
+  /api/v1/seller/products/{product_id}:
+    get:
+      summary: Get seller product
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: product_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Seller product detail. }
+    patch:
+      summary: Update seller product
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: product_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Product updated. }
+    delete:
+      summary: Soft-delete seller product
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: product_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "204": { description: Product deleted. }
+  /api/v1/seller/products/{product_id}/publish:
+    post:
+      summary: Publish approved seller product
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: product_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Product published. }
+  /api/v1/seller/products/{product_id}/unpublish:
+    post:
+      summary: Unpublish seller product
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: product_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Product unpublished. }
+  /api/v1/seller/products/{product_id}/duplicate:
+    post:
+      summary: Duplicate seller product as draft
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: product_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "201": { description: Product duplicated. }
+  /api/v1/seller/products/{product_id}/images:
+    get:
+      summary: List product images
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: product_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Product images. }
+    post:
+      summary: Add product image
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: product_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "201": { description: Product image created. }
+  /api/v1/seller/products/{product_id}/variants:
+    get:
+      summary: List product variants
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: product_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Product variants. }
+    post:
+      summary: Create product variant and inventory item
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: product_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "201": { description: Variant created. }
+  /api/v1/seller/inventory:
+    get:
+      summary: List seller inventory
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Seller inventory. }
+  /api/v1/seller/inventory/low-stock:
+    get:
+      summary: List low-stock inventory
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Low-stock inventory. }
+  /api/v1/seller/inventory/{inventory_id}/adjust:
+    post:
+      summary: Adjust inventory with row-level locking and movement record
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: inventory_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Updated inventory and movement. }
+  /api/v1/admin/seller-applications:
+    get:
+      summary: Admin list seller applications
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Seller applications. }
+  /api/v1/admin/seller-applications/{application_id}/review:
+    post:
+      summary: Admin approve, reject, or mark seller application in review
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: application_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Reviewed application. }
+  /api/v1/admin/sellers/{seller_id}/status:
+    patch:
+      summary: Admin update seller status
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: seller_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Updated seller. }
+  /api/v1/admin/products/{product_id}/moderation:
+    patch:
+      summary: Admin moderate product
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: product_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Moderated product. }
+
+  /api/v1/admin/categories:
+    get:
+      summary: List categories (admin)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Categories list. }
+    post:
+      summary: Create category (admin)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "201": { description: Category created. }
+
+  /api/v1/admin/categories/{category_id}:
+    patch:
+      summary: Update category (admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: category_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Category updated. }
+    delete:
+      summary: Delete category (admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: category_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "204": { description: Category deleted. }
+
+  /api/v1/admin/categories/reorder:
+    post:
+      summary: Reorder categories (admin)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Categories reordered. }
+
+  /api/v1/admin/brands:
+    get:
+      summary: List brands (admin)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Brands list. }
+    post:
+      summary: Create brand (admin)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "201": { description: Brand created. }
+
+  /api/v1/admin/brands/{brand_id}:
+    patch:
+      summary: Update brand (admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: brand_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Brand updated. }
+    delete:
+      summary: Delete brand (admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: brand_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "204": { description: Brand deleted. }
+
+  /api/v1/admin/products:
+    get:
+      summary: List products (admin)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Product list. }
+
+  /api/v1/admin/products/{product_id}:
+    get:
+      summary: Get product detail (admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: product_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Product detail. }
+
+  /api/v1/admin/health:
+    get:
+      summary: Admin readiness checks
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Admin health checks and readiness status. }
+
+  /api/v1/admin/users:
+    get:
+      summary: Admin list users
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Paginated users list. }
+
+  /api/v1/admin/users/{user_id}:
+    get:
+      summary: Admin get user
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: user_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: User detail. }
+
+  /api/v1/admin/users/{user_id}/status:
+    patch:
+      summary: Admin update user status
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: user_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Updated user status. }
+
+  /api/v1/admin/users/{user_id}/roles:
+    get:
+      summary: Admin get user roles
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: user_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: User roles. }
+    put:
+      summary: Admin replace user roles
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: user_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: User roles replaced. }
+
+  /api/v1/admin/rbac/roles:
+    get:
+      summary: Admin list RBAC roles
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Roles list. }
+    post:
+      summary: Admin create RBAC role
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Role created. }
+
+  /api/v1/admin/rbac/roles/{role_id}:
+    patch:
+      summary: Admin update RBAC role
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: role_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Role updated. }
+    delete:
+      summary: Admin delete RBAC role
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: role_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "204": { description: Role deleted. }
+
+  /api/v1/admin/rbac/permissions:
+    get:
+      summary: Admin list RBAC permissions
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Permissions list. }
+    post:
+      summary: Admin create RBAC permission
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Permission created. }
+
+  /api/v1/admin/rbac/permissions/{permission_id}:
+    patch:
+      summary: Admin update RBAC permission
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: permission_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Permission updated. }
+    delete:
+      summary: Admin delete RBAC permission
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: permission_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "204": { description: Permission deleted. }
+
+  /api/v1/admin/rbac/roles/{role_id}/permissions:
+    get:
+      summary: Admin list role permissions
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: role_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Role permission list. }
+    put:
+      summary: Admin replace role permissions
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: role_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Role permissions replaced. }
+
+  /api/v1/admin/cms/pages:
+    get:
+      summary: Admin list CMS pages
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: CMS pages. }
+    post:
+      summary: Admin create CMS page
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: CMS page created. }
+
+  /api/v1/admin/cms/pages/{page_id}:
+    get:
+      summary: Admin get CMS page
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: page_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: CMS page detail. }
+    patch:
+      summary: Admin update CMS page
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: page_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: CMS page updated. }
+    delete:
+      summary: Admin delete CMS page
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: page_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "204": { description: CMS page deleted. }
+
+  /api/v1/admin/cms/banners:
+    get:
+      summary: Admin list CMS banners
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: CMS banners. }
+    post:
+      summary: Admin create CMS banner
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: CMS banner created. }
+
+  /api/v1/admin/cms/faqs:
+    get:
+      summary: Admin list CMS FAQs
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: CMS FAQ list. }
+    post:
+      summary: Admin create CMS FAQ
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: CMS FAQ created. }
+
+  /api/v1/admin/cms/announcements:
+    get:
+      summary: Admin list CMS announcements
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: CMS announcements. }
+    post:
+      summary: Admin create CMS announcement
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: CMS announcement created. }
+
+  /api/v1/buyer/addresses:
+    get:
+      summary: List buyer addresses
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Buyer addresses. }
+    post:
+      summary: Create buyer address
+      security: [{ bearerAuth: [] }]
+      responses:
+        "201": { description: Address created. }
+
+  /api/v1/buyer/addresses/{address_id}:
+    get:
+      summary: Get buyer address
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: address_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Address. }
+        "404": { description: Address not found. }
+    patch:
+      summary: Update buyer address
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: address_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Updated address. }
+    delete:
+      summary: Delete buyer address
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: address_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "204": { description: Address deleted. }
+
+  /api/v1/buyer/addresses/{address_id}/set-default:
+    post:
+      summary: Set default buyer address
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: address_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Default address set. }
+
+  /api/v1/buyer/cart:
+    get:
+      summary: Get buyer cart
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Cart with items. }
+    delete:
+      summary: Clear buyer cart
+      security: [{ bearerAuth: [] }]
+      responses:
+        "204": { description: Cart cleared. }
+
+  /api/v1/buyer/cart/items:
+    post:
+      summary: Add item to cart
+      security: [{ bearerAuth: [] }]
+      responses:
+        "201": { description: Cart item added. }
+
+  /api/v1/buyer/cart/items/{cart_item_id}:
+    patch:
+      summary: Update cart item quantity
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: cart_item_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Cart item updated. }
+    delete:
+      summary: Delete cart item
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: cart_item_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "204": { description: Cart item deleted. }
+
+  /api/v1/buyer/cart/merge:
+    post:
+      summary: Merge guest cart into buyer cart
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Cart merged. }
+
+  /api/v1/buyer/cart/select-items:
+    post:
+      summary: Select cart items for checkout
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Cart selection updated. }
+
+  /api/v1/buyer/cart/apply-voucher:
+    post:
+      summary: Apply cart voucher
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Voucher applied. }
+
+  /api/v1/buyer/cart/voucher/{voucher_id}:
+    delete:
+      summary: Remove cart voucher
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: voucher_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Voucher removed. }
+
+  /api/v1/buyer/checkout/sessions:
+    post:
+      summary: Create checkout session
+      security: [{ bearerAuth: [] }]
+      responses:
+        "201": { description: Checkout session created. }
+
+  /api/v1/buyer/checkout/sessions/{checkout_session_id}:
+    get:
+      summary: Get checkout session
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: checkout_session_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Checkout session. }
+
+  /api/v1/buyer/checkout/sessions/{checkout_session_id}/address:
+    patch:
+      summary: Update checkout addresses
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: checkout_session_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Updated checkout session. }
+
+  /api/v1/buyer/checkout/sessions/{checkout_session_id}/shipping:
+    patch:
+      summary: Update checkout shipping selection
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: checkout_session_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Updated checkout session. }
+
+  /api/v1/buyer/checkout/sessions/{checkout_session_id}/payment-method:
+    patch:
+      summary: Update checkout payment method
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: checkout_session_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Updated checkout session. }
+
+  /api/v1/buyer/checkout/sessions/{checkout_session_id}/apply-voucher:
+    post:
+      summary: Apply checkout voucher
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: checkout_session_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Voucher applied. }
+
+  /api/v1/buyer/checkout/sessions/{checkout_session_id}/voucher/{voucher_id}:
+    delete:
+      summary: Remove checkout voucher
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: checkout_session_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: voucher_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Voucher removed. }
+
+  /api/v1/buyer/checkout/sessions/{checkout_session_id}/validate:
+    post:
+      summary: Validate checkout session
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: checkout_session_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Validation result. }
+
+  /api/v1/buyer/checkout/sessions/{checkout_session_id}/place-order:
+    post:
+      summary: Place order from checkout session
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: checkout_session_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "201": { description: Order created. }
+
+  /api/v1/buyer/orders:
+    get:
+      summary: List buyer orders
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Buyer orders. }
+
+  /api/v1/buyer/orders/{order_id}:
+    get:
+      summary: Get buyer order detail
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: order_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Order detail. }
+
+  /api/v1/buyer/orders/{order_id}/items:
+    get:
+      summary: List buyer order items
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: order_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Order items. }
+
+  /api/v1/buyer/orders/{order_id}/status-history:
+    get:
+      summary: List order status history
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: order_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Status history. }
+
+  /api/v1/buyer/orders/{order_id}/cancel:
+    post:
+      summary: Buyer cancel order
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: order_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Order cancelled. }
+
+  /api/v1/buyer/orders/{order_id}/confirm-received:
+    post:
+      summary: Buyer confirm received
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: order_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Order completed. }
+
+  /api/v1/buyer/orders/{order_id}/request-refund:
+    post:
+      summary: Buyer request refund
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: order_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "201": { description: Refund requested. }
+
+  /api/v1/buyer/orders/{order_id}/request-return:
+    post:
+      summary: Buyer request return
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: order_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "201": { description: Return requested. }
+
+  /api/v1/buyer/orders/{order_id}/dispute:
+    post:
+      summary: Buyer dispute order
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: order_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Order disputed. }
+
+  /api/v1/buyer/orders/{order_id}/invoice:
+    get:
+      summary: Buyer order invoice
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: order_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Invoice payload. }
+
+  /api/v1/buyer/orders/{order_id}/tracking:
+    get:
+      summary: Buyer order tracking
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: order_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Shipments and tracking events. }
+
+  /api/v1/seller/orders:
+    get:
+      summary: List seller orders
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Seller orders. }
+
+  /api/v1/seller/orders/{order_id}:
+    get:
+      summary: Get seller order detail
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: order_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Seller order detail. }
+
+  /api/v1/seller/orders/{order_id}/items:
+    get:
+      summary: List seller order items
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: order_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Seller order items. }
+
+  /api/v1/seller/orders/{order_id}/ship:
+    post:
+      summary: Seller ship order
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: order_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Order marked shipped with shipment updated. }
+
+  /api/v1/admin/orders:
+    get:
+      summary: List admin orders
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Orders. }
+
+  /api/v1/admin/orders/{order_id}:
+    get:
+      summary: Get admin order detail
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: order_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Order detail. }
+    patch:
+      summary: Patch admin order
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: order_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Order updated. }
+
+  /api/v1/admin/orders/{order_id}/cancel:
+    post:
+      summary: Cancel order (admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: order_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Order cancelled. }
+
+  /api/v1/admin/orders/{order_id}/refund:
+    post:
+      summary: Refund order (admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: order_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Order refunded. }
+
+  /api/v1/admin/orders/{order_id}/status-history:
+    get:
+      summary: Order status history (admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: order_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Order status transitions. }
+
+  /api/v1/admin/orders/{order_id}/payments:
+    get:
+      summary: List order payments (admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: order_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Payments for order. }
+
+  /api/v1/admin/orders/{order_id}/shipments:
+    get:
+      summary: List order shipments (admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: order_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Shipments for order. }
+
+  /api/v1/internal/jobs/release-expired-inventory:
+    post:
+      summary: Release expired checkout reservations
+      security: [{ internalTokenAuth: [] }]
+      responses:
+        "200": { description: Released reservation count. }
+
+  /api/v1/internal/jobs/cancel-unpaid-orders:
+    post:
+      summary: Cancel stale unpaid orders and release reservations
+      security: [{ internalTokenAuth: [] }]
+      responses:
+        "200": { description: Cancelled order and released reservation counts. }
+
+  /api/v1/internal/jobs/generate-invoices:
+    post:
+      summary: Generate invoice for order
+      security: [{ internalTokenAuth: [] }]
+      responses:
+        "200": { description: Generated invoice payload. }
+
+  /api/v1/internal/jobs/update-shipment-tracking:
+    post:
+      summary: Ingest shipment tracking events
+      security: [{ internalTokenAuth: [] }]
+      responses:
+        "200": { description: Scanned shipments and created events. }
+
+  /api/v1/buyer/orders/{order_id}/shipments:
+    get:
+      summary: List shipments for buyer order
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: order_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Shipments for order. }
+
+  /api/v1/seller/orders/{order_id}/shipments:
+    get:
+      summary: List shipments for seller order
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: order_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Shipments for seller order. }
+
+  /api/v1/seller/shipments/{shipment_id}:
+    patch:
+      summary: Update shipment fields (seller)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: shipment_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Updated shipment. }
+
+  /api/v1/seller/shipments/{shipment_id}/mark-packed:
+    post:
+      summary: Mark shipment packed (seller)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: shipment_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Shipment updated. }
+
+  /api/v1/seller/shipments/{shipment_id}/mark-shipped:
+    post:
+      summary: Mark shipment shipped (seller)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: shipment_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Shipment updated. }
+
+  /api/v1/seller/shipments/{shipment_id}/mark-in-transit:
+    post:
+      summary: Mark shipment in transit (seller)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: shipment_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Shipment updated. }
+
+  /api/v1/seller/shipments/{shipment_id}/mark-delivered:
+    post:
+      summary: Mark shipment delivered (seller)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: shipment_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Shipment updated. }
+
+  /api/v1/seller/shipments/{shipment_id}/labels:
+    post:
+      summary: Create shipment label (seller)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: shipment_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Shipment label created. }
+
+  /api/v1/admin/shipping/providers:
+    get:
+      summary: List shipping providers (admin)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Active providers. }
+    post:
+      summary: Create shipping provider (admin)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Provider created. }
+
+  /api/v1/admin/shipping/providers/{provider_id}:
+    patch:
+      summary: Update shipping provider (admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: provider_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Provider updated. }
+
+  /api/v1/admin/shipping/shipments:
+    get:
+      summary: List shipments (admin)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Shipments list. }
+
+  /api/v1/admin/shipping/shipments/{shipment_id}:
+    get:
+      summary: Get shipment detail (admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: shipment_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Shipment detail. }
+
+  /api/v1/admin/shipping/shipments/{shipment_id}/tracking:
+    get:
+      summary: List tracking events for shipment (admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: shipment_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Shipment tracking events. }
+
+  /api/v1/admin/shipping/shipments/{shipment_id}/status:
+    post:
+      summary: Override shipment status (admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: shipment_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Shipment updated. }
+
+  /api/v1/buyer/payment-methods:
+    get:
+      summary: List buyer payment methods
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Payment methods. }
+    post:
+      summary: Create buyer payment method
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Created payment method. }
+
+  /api/v1/buyer/payment-methods/{method_id}:
+    delete:
+      summary: Delete buyer payment method
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: method_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Deleted. }
+
+  /api/v1/buyer/payment-methods/{method_id}/set-default:
+    post:
+      summary: Set default buyer payment method
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: method_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Updated payment method. }
+
+  /api/v1/buyer/payments/create-intent:
+    post:
+      summary: Create payment intent for an order
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Payment intent created (idempotent). }
+
+  /api/v1/buyer/payments/confirm:
+    post:
+      summary: Confirm a payment (evidence submission)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Payment returned. }
+
+  /api/v1/buyer/payments/{payment_id}:
+    get:
+      summary: Get buyer payment by id
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: payment_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Payment detail. }
+
+  /api/v1/buyer/payments/{payment_id}/retry:
+    post:
+      summary: Retry a payment
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: payment_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "501": { description: Not implemented (use create-intent). }
+
+  /api/v1/buyer/payments/{payment_id}/cancel:
+    post:
+      summary: Cancel a payment
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: payment_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Payment cancelled. }
+
+  /api/v1/admin/payments/wave/pending:
+    get:
+      summary: List pending Wave manual payments (admin/ops)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Pending payments. }
+
+  /api/v1/admin/payments/{payment_id}/wave/approve:
+    post:
+      summary: Approve Wave manual payment (admin/ops)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: payment_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Payment approved and order transitioned to paid. }
+
+  /api/v1/admin/payments/{payment_id}/wave/reject:
+    post:
+      summary: Reject Wave manual payment (admin/ops)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: payment_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Payment rejected. }
+
+  /api/v1/admin/payments/webhooks:
+    get:
+      summary: List payment webhook events (admin)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Webhook event list. }
+
+  /api/v1/admin/payments/webhooks/{event_id}:
+    get:
+      summary: Get payment webhook event detail (admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: event_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Webhook event detail. }
+
+  /api/v1/admin/payments/webhooks/{event_id}/reprocess:
+    post:
+      summary: Reprocess payment webhook event (admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: event_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Webhook event marked processed/reprocessed. }
+
+  /api/v1/admin/payments/{payment_id}/pod/capture:
+    post:
+      summary: Capture POD payment (admin/ops)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: payment_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Payment captured and order transitioned to paid. }
+
+  /api/v1/seller/payments/{payment_id}/pod/capture:
+    post:
+      summary: Capture POD payment (seller)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: payment_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Payment captured and order transitioned to paid. }
+
+  /api/v1/admin/refunds/{refund_id}/review:
+    post:
+      summary: Review refund request (admin/ops)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: refund_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Refund reviewed; approval transitions order to refunded. }
+
+  /api/v1/admin/refunds/{refund_id}/process:
+    post:
+      summary: Process refund request (admin/ops)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: refund_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Refund processed. }
+
+  /api/v1/seller/wallet:
+    get:
+      summary: Get seller wallet
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Seller wallet. }
+
+  /api/v1/seller/wallet/transactions:
+    get:
+      summary: List seller wallet transactions
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Wallet transactions. }
+
+  /api/v1/seller/bank-accounts:
+    get:
+      summary: List seller bank accounts
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Seller bank accounts. }
+    post:
+      summary: Create seller bank account
+      security: [{ bearerAuth: [] }]
+      responses:
+        "201": { description: Bank account created. }
+
+  /api/v1/seller/bank-accounts/{bank_account_id}:
+    patch:
+      summary: Update seller bank account
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: bank_account_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Bank account updated. }
+    delete:
+      summary: Delete seller bank account
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: bank_account_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "204": { description: Bank account deleted. }
+
+  /api/v1/seller/bank-accounts/{bank_account_id}/set-default:
+    post:
+      summary: Set default seller bank account
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: bank_account_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Default bank account updated. }
+
+  /api/v1/seller/payouts/request:
+    post:
+      summary: Request a seller payout
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Payout requested (wallet debited). }
+
+  /api/v1/seller/payouts:
+    get:
+      summary: List seller payouts
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Seller payouts. }
+
+  /api/v1/admin/payouts/{payout_id}/status:
+    post:
+      summary: Update payout status (admin/ops)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: payout_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Payout status updated. }
+
+  /api/v1/admin/vouchers:
+    get:
+      summary: List vouchers (admin)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Voucher list. }
+    post:
+      summary: Create voucher (admin)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Voucher created. }
+
+  /api/v1/admin/vouchers/{voucher_id}:
+    patch:
+      summary: Update voucher (admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: voucher_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Voucher updated. }
+    delete:
+      summary: Delete voucher (admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: voucher_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "204": { description: Voucher deleted. }
+
+  /api/v1/admin/reviews/{review_id}/hide:
+    patch:
+      summary: Hide/unhide review (admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: review_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Review visibility updated. }
+
+  /api/v1/admin/reviews/{review_id}:
+    delete:
+      summary: Delete review (admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: review_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "204": { description: Review deleted. }
+
+  /api/v1/admin/reviews/reports:
+    get:
+      summary: List reported reviews (admin)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Review reports. }
+
+  /api/v1/admin/reviews/reports/{report_id}/resolve:
+    patch:
+      summary: Resolve review report (admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: report_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Review report resolved. }
+
+  /api/v1/internal/jobs/settle-seller-wallets:
+    post:
+      summary: Settle completed orders into seller wallets
+      security: [{ internalTokenAuth: [] }]
+      responses:
+        "200": { description: Settlement batch applied. }
+
+  /api/v1/internal/jobs/release-wallet-holds:
+    post:
+      summary: Release held wallet credits to available balance
+      security: [{ internalTokenAuth: [] }]
+      responses:
+        "200": { description: Hold releases applied. }
+
+  /api/v1/webhooks/{provider}:
+    post:
+      summary: Payment provider webhook ingestion (raw store)
+      parameters:
+        - { name: provider, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Stored webhook event. }
+
+  /api/v1/admin/moderation/reports:
+    get:
+      summary: List moderation reports (admin)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Paginated moderation reports. }
+
+  /api/v1/admin/moderation/reports/{report_id}:
+    get:
+      summary: Get moderation report (admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: report_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Moderation report detail. }
+    patch:
+      summary: Update moderation report status (admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: report_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Updated moderation report. }
+
+  /api/v1/admin/moderation/cases:
+    get:
+      summary: List moderation cases (admin)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Paginated moderation cases. }
+    post:
+      summary: Create moderation case (admin)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Created moderation case. }
+
+  /api/v1/admin/moderation/cases/{case_id}:
+    get:
+      summary: Get moderation case (admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: case_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Moderation case detail. }
+    patch:
+      summary: Update moderation case (admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: case_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Updated moderation case. }
+
+  /api/v1/admin/settings/platform:
+    get:
+      summary: List platform settings (admin)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Platform settings. }
+
+  /api/v1/admin/settings/platform/{key}:
+    put:
+      summary: Upsert platform setting (admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: key, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Upserted platform setting. }
+
+  /api/v1/admin/settings/feature-flags:
+    get:
+      summary: List feature flags (admin)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Feature flags. }
+
+  /api/v1/admin/settings/feature-flags/{key}:
+    put:
+      summary: Upsert feature flag (admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: key, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Upserted feature flag. }
+
+  /api/v1/admin/logs/audit:
+    get:
+      summary: List audit logs (admin)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Paginated audit logs. }
+
+  /api/v1/admin/logs/activity:
+    get:
+      summary: List admin activity logs (admin)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Paginated admin activity logs. }
+
+  /api/v1/admin/dashboard/overview:
+    get:
+      summary: Admin dashboard overview totals
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Aggregated domain totals. }
+
+  /api/v1/admin/dashboard/charts/events:
+    get:
+      summary: Admin dashboard event chart
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Daily event rollups. }
+
+  /api/v1/admin/analytics/events:
+    post:
+      summary: Ingest analytics event payload
+      security: [{ bearerAuth: [] }]
+      responses:
+        "202": { description: Event accepted for async processing. }
+
+  /api/v1/internal/jobs/process-analytics-events:
+    post:
+      summary: Process analytics event queue and rollups
+      security: [{ internalTokenAuth: [] }]
+      responses:
+        "200": { description: Queue processing summary. }
+
+  /api/v1/chat/conversations:
+    get:
+      summary: List user conversations
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Conversation list. }
+    post:
+      summary: Create or get conversation
+      security: [{ bearerAuth: [] }]
+      responses:
+        "201": { description: Conversation created or returned. }
+
+  /api/v1/chat/conversations/{conversation_id}/messages:
+    get:
+      summary: List conversation messages
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: conversation_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Message list. }
+    post:
+      summary: Send conversation message
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: conversation_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "201": { description: Message created. }
+
+  /api/v1/chat/conversations/{conversation_id}/messages/{message_id}:
+    delete:
+      summary: Delete a message in a conversation
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: conversation_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: message_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "204": { description: Message deleted. }
+
+  /api/v1/chat/conversations/{conversation_id}/read:
+    patch:
+      summary: Mark conversation messages as read
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: conversation_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "204": { description: Conversation marked read. }
+
+  /api/v1/chat/conversations/{conversation_id}:
+    delete:
+      summary: Delete conversation for current user
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: conversation_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "204": { description: Conversation deleted. }
+
+  /api/v1/seller/notifications:
+    get:
+      summary: List seller notifications
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Seller notification list. }
+
+  /api/v1/seller/notifications/unread-count:
+    get:
+      summary: Get seller unread notification count
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Seller unread count. }
+
+  /api/v1/seller/notifications/{notification_id}/read:
+    patch:
+      summary: Mark seller notification as read
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: notification_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Notification marked read. }
+
+  /api/v1/seller/notifications/read-all:
+    patch:
+      summary: Mark all seller notifications as read
+      security: [{ bearerAuth: [] }]
+      responses:
+        "204": { description: Notifications marked read. }
+
+  /api/v1/seller/notifications/{notification_id}:
+    delete:
+      summary: Delete seller notification
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: notification_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "204": { description: Notification deleted. }
+
+  /api/v1/seller/notifications/preferences:
+    get:
+      summary: Get seller notification preferences
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Seller notification preferences. }
+    put:
+      summary: Upsert seller notification preferences
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Seller notification preferences updated. }
+
+  /api/v1/admin/notifications:
+    get:
+      summary: List admin notifications
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Admin notification list. }
+
+  /api/v1/admin/notifications/unread-count:
+    get:
+      summary: Get admin unread notification count
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Admin unread count. }
+
+  /api/v1/admin/notifications/{notification_id}/read:
+    patch:
+      summary: Mark admin notification as read
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: notification_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Notification marked read. }
+
+  /api/v1/admin/notifications/read-all:
+    patch:
+      summary: Mark all admin notifications as read
+      security: [{ bearerAuth: [] }]
+      responses:
+        "204": { description: Notifications marked read. }
+
+  /api/v1/admin/notifications/{notification_id}:
+    delete:
+      summary: Delete admin notification
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: notification_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "204": { description: Notification deleted. }
+
+  /api/v1/admin/notifications/preferences:
+    get:
+      summary: Get admin notification preferences
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Admin notification preferences. }
+    put:
+      summary: Upsert admin notification preferences
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Admin notification preferences updated. }
+
+  /ws/chat:
+    get:
+      summary: Chat websocket channel
+      parameters:
+        - { name: token, in: query, required: false, schema: { type: string } }
+      responses:
+        "101": { description: Websocket upgraded. }
+
+  /ws/notifications:
+    get:
+      summary: Notifications websocket channel
+      parameters:
+        - { name: token, in: query, required: false, schema: { type: string } }
+      responses:
+        "101": { description: Websocket upgraded. }
+
+  /ws/order-status:
+    get:
+      summary: Order status websocket channel
+      parameters:
+        - { name: token, in: query, required: false, schema: { type: string } }
+      responses:
+        "101": { description: Websocket upgraded. }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    internalTokenAuth:
+      type: apiKey
+      in: header
+      name: X-Internal-Token
+  schemas:
+    Envelope:
+      type: object
+      required:
+        - success
+      properties:
+        success:
+          type: boolean
+        data:
+          nullable: true
+        error:
+          $ref: "#/components/schemas/APIError"
+        meta:
+          type: object
+          additionalProperties: true
+        trace_id:
+          type: string
+
+    AuthPair:
+      type: object
+      required: [access_token, refresh_token]
+      properties:
+        access_token: { type: string }
+        refresh_token: { type: string }
+
+    PublicUser:
+      type: object
+      required: [id, status, email_verified, phone_verified, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        status: { type: string }
+        email_verified: { type: boolean }
+        phone_verified: { type: boolean }
+        created_at: { type: string, format: date-time }
+        email: { type: string, format: email, nullable: true }
+        phone: { type: string, nullable: true }
+
+    Ok:
+      type: object
+      properties:
+        ok: { type: boolean }
+
+    EnvelopeAuthPair:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/AuthPair"
+
+    EnvelopePublicUser:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/PublicUser"
+
+    EnvelopeOk:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/Ok"
+    APIError:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        fields:
+          type: array
+          items:
+            $ref: "#/components/schemas/FieldError"
+    FieldError:
+      type: object
+      properties:
+        field:
+          type: string
+        message:
+          type: string

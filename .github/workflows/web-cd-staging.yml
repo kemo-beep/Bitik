@@ -1,0 +1,70 @@
+name: web-cd-staging
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["staging"]
+    paths:
+      - "bitik-web/**"
+      - ".github/workflows/web-cd-staging.yml"
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: web-cd-staging
+  cancel-in-progress: false
+
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Image name (lowercase for GHCR)
+        id: meta
+        run: |
+          owner_lc=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          echo "image=ghcr.io/${owner_lc}/bitik-web" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tags
+        id: tags
+        run: |
+          sha_short=$(echo "${{ github.sha }}" | cut -c1-7)
+          echo "tag_sha=staging-${sha_short}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push staging image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./bitik-web
+          file: ./bitik-web/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.image }}:${{ steps.tags.outputs.tag_sha }}
+            ${{ steps.meta.outputs.image }}:staging-latest
+          build-args: |
+            NEXT_PUBLIC_API_BASE_URL=${{ secrets.STAGING_NEXT_PUBLIC_API_BASE_URL }}
+            NEXT_PUBLIC_ASSET_BASE_URL=${{ secrets.STAGING_NEXT_PUBLIC_ASSET_BASE_URL }}
+            NEXT_PUBLIC_WS_BASE_URL=${{ secrets.STAGING_NEXT_PUBLIC_WS_BASE_URL }}
+            NEXT_PUBLIC_OAUTH_REDIRECT_BASE_URL=${{ secrets.STAGING_NEXT_PUBLIC_OAUTH_REDIRECT_BASE_URL }}
+            NEXT_PUBLIC_FEATURE_FLAGS=${{ vars.STAGING_NEXT_PUBLIC_FEATURE_FLAGS || '{}' }}
+            NEXT_PUBLIC_ANALYTICS_ENABLED=${{ vars.STAGING_NEXT_PUBLIC_ANALYTICS_ENABLED || '0' }}
+            NEXT_PUBLIC_SENTRY_DSN=${{ secrets.STAGING_NEXT_PUBLIC_SENTRY_DSN || '' }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Summary
+        run: |
+          echo "Pushed \`${{ steps.meta.outputs.image }}:${{ steps.tags.outputs.tag_sha }}\` and \`:staging-latest\`" >> "$GITHUB_STEP_SUMMARY"
