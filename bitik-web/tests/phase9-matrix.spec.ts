@@ -1,43 +1,26 @@
-import { expect, test, type Page } from "@playwright/test"
-import { envelope, makeFakeJWT, mockJson, stubAuthBootstrap } from "./helpers/api-mock"
+import { expect, test } from "@playwright/test"
+import {
+  envelope,
+  makeFakeJWT,
+  mockJson,
+  routeApiMatch,
+  stubAuthBootstrap,
+  stubLoggedInSession,
+} from "./helpers/api-mock"
 
-async function stubSellerBootstrap(page: Page, roles: string[] = ["seller"]) {
-  const accessToken = makeFakeJWT({ roles, sub: "seller-1" })
-  await page.route("**/api/v1/auth/refresh-token", async (route) => {
-    await mockJson(route, envelope({ access_token: accessToken, refresh_token: "r1" }))
-  })
-  await page.route("**/api/v1/users/me", async (route) => {
-    await mockJson(
-      route,
-      envelope({
-        id: "00000000-0000-0000-0000-000000000111",
-        status: "active",
-        email_verified: true,
-        phone_verified: true,
-        created_at: new Date().toISOString(),
-        email: "seller@example.com",
-      })
-    )
+function stubSellerBootstrap(page: Parameters<typeof stubLoggedInSession>[0]) {
+  return stubLoggedInSession(page, ["seller"], {
+    id: "00000000-0000-0000-0000-000000000111",
+    email: "seller@example.com",
+    sub: "seller-1",
   })
 }
 
-async function stubAdminSession(page: Page) {
-  const accessToken = makeFakeJWT({ roles: ["admin"], sub: "admin-1" })
-  await page.route("**/api/v1/auth/refresh-token", async (route) => {
-    await mockJson(route, envelope({ access_token: accessToken, refresh_token: "r1" }))
-  })
-  await page.route("**/api/v1/users/me", async (route) => {
-    await mockJson(
-      route,
-      envelope({
-        id: "00000000-0000-0000-0000-000000000001",
-        status: "active",
-        email_verified: true,
-        phone_verified: true,
-        created_at: new Date().toISOString(),
-        email: "admin@example.com",
-      })
-    )
+function stubAdminSession(page: Parameters<typeof stubLoggedInSession>[0]) {
+  return stubLoggedInSession(page, ["admin"], {
+    id: "00000000-0000-0000-0000-000000000001",
+    email: "admin@example.com",
+    sub: "admin-1",
   })
 }
 
@@ -45,11 +28,11 @@ test("register submits auth register (@critical)", async ({ page }) => {
   await stubAuthBootstrap(page)
   const token = makeFakeJWT({ roles: ["buyer"], sub: "new-user" })
   let registered = false
-  await page.route("**/api/v1/auth/register", async (route) => {
+  await page.route(routeApiMatch("/api/v1/auth/register"), async (route) => {
     registered = true
     await mockJson(route, envelope({ access_token: token, refresh_token: "r-new" }))
   })
-  await page.route("**/api/v1/users/me", async (route) => {
+  await page.route(routeApiMatch("/api/v1/users/me"), async (route) => {
     await mockJson(
       route,
       envelope({
@@ -73,13 +56,13 @@ test("register submits auth register (@critical)", async ({ page }) => {
 
 test("storefront home and search load (@critical)", async ({ page }) => {
   await stubAuthBootstrap(page)
-  await page.route("**/api/v1/public/home", async (route) => {
+  await page.route(routeApiMatch("/api/v1/public/home"), async (route) => {
     await mockJson(route, envelope({ banners: [], sections: [], products: [] }))
   })
   await page.goto("/")
   await expect(page.getByRole("banner")).toBeVisible({ timeout: 15_000 })
 
-  await page.route("**/api/v1/public/products**", async (route) => {
+  await page.route(routeApiMatch("/api/v1/public/products"), async (route) => {
     await mockJson(route, envelope({ items: [], pagination: { total_pages: 1 } }))
   })
   await page.goto("/search?q=test")
@@ -88,7 +71,7 @@ test("storefront home and search load (@critical)", async ({ page }) => {
 
 test("checkout with POD pre-selected places order (@critical)", async ({ page }) => {
   await stubAuthBootstrap(page)
-  await page.route("**/api/v1/buyer/addresses", async (route) => {
+  await page.route(routeApiMatch("/api/v1/buyer/addresses"), async (route) => {
     await mockJson(
       route,
       envelope([
@@ -103,27 +86,28 @@ test("checkout with POD pre-selected places order (@critical)", async ({ page })
       ])
     )
   })
-  await page.route("**/api/v1/buyer/checkout/sessions", async (route) => {
+  await page.route(routeApiMatch("/api/v1/buyer/checkout/sessions"), async (route) => {
     await mockJson(route, envelope({ id: "chk-pod", checkout_session_id: "chk-pod" }), 201)
   })
-  await page.route("**/api/v1/buyer/checkout/sessions/chk-pod", async (route) => {
-    await mockJson(
-      route,
-      envelope({
-        id: "chk-pod",
-        shipping_address_id: "addr-1",
-        shipping_method: "standard",
-        payment_method: "pod",
-        summary: { total_amount: 5000, currency: "MMK" },
-      })
-    )
-  })
   let placed = false
-  await page.route("**/api/v1/buyer/checkout/sessions/chk-pod/**", async (route) => {
+  await page.route(routeApiMatch("/api/v1/buyer/checkout/sessions/chk-pod"), async (route) => {
     const url = route.request().url()
     if (url.endsWith("/place-order")) {
       placed = true
       await mockJson(route, envelope({ order_id: "ord-pod", payment_status: "paid" }), 201)
+      return
+    }
+    if (route.request().method() === "GET") {
+      await mockJson(
+        route,
+        envelope({
+          id: "chk-pod",
+          shipping_address_id: "addr-1",
+          shipping_method: "standard",
+          payment_method: "pod",
+          summary: { total_amount: 5000, currency: "MMK" },
+        })
+      )
       return
     }
     await mockJson(route, envelope({ ok: true }))
@@ -138,24 +122,24 @@ test("Wave manual pending page (@critical)", async ({ page }) => {
   await stubAuthBootstrap(page)
   await page.goto("/checkout/pending?order_id=ord-pending-1")
   await expect(page.getByRole("heading", { name: "Awaiting manual confirmation" })).toBeVisible()
-  await expect(page.getByText("ord-pending-1")).toBeVisible()
+  await expect(page.getByText(/ord-pending-1/)).toBeVisible()
 })
 
 test("buyer order detail shows tracking section (@critical)", async ({ page }) => {
-  await stubAuthBootstrap(page)
-  await page.route("**/api/v1/buyer/orders/ord-1", async (route) => {
+  await stubLoggedInSession(page, ["buyer"], { email: "buyer@example.com" })
+  await page.route(routeApiMatch("/api/v1/buyer/orders/ord-1"), async (route) => {
     await mockJson(route, envelope({ id: "ord-1", status: "shipped" }))
   })
-  await page.route("**/api/v1/buyer/orders/ord-1/items", async (route) => {
+  await page.route(routeApiMatch("/api/v1/buyer/orders/ord-1/items"), async (route) => {
     await mockJson(route, envelope({ items: [] }))
   })
-  await page.route("**/api/v1/buyer/orders/ord-1/status-history", async (route) => {
+  await page.route(routeApiMatch("/api/v1/buyer/orders/ord-1/status-history"), async (route) => {
     await mockJson(route, envelope({ items: [] }))
   })
-  await page.route("**/api/v1/buyer/orders/ord-1/tracking", async (route) => {
+  await page.route(routeApiMatch("/api/v1/buyer/orders/ord-1/tracking"), async (route) => {
     await mockJson(route, envelope({ carrier: "TestCarrier", events: [] }))
   })
-  await page.route("**/api/v1/buyer/orders/ord-1/invoice", async (route) => {
+  await page.route(routeApiMatch("/api/v1/buyer/orders/ord-1/invoice"), async (route) => {
     await mockJson(route, envelope({}))
   })
 
@@ -165,9 +149,9 @@ test("buyer order detail shows tracking section (@critical)", async ({ page }) =
 })
 
 test("seller creates product from new product page (@critical)", async ({ page }) => {
-  await stubSellerBootstrap(page, ["seller"])
+  await stubSellerBootstrap(page)
   let created = false
-  await page.route("**/api/v1/seller/products", async (route) => {
+  await page.route(routeApiMatch("/api/v1/seller/products"), async (route) => {
     if (route.request().method() === "POST") {
       created = true
       await mockJson(route, envelope({ id: "prod-new", name: "Widget", slug: "widget" }), 201)
@@ -185,9 +169,9 @@ test("seller creates product from new product page (@critical)", async ({ page }
 })
 
 test("seller ships order from order detail (@critical)", async ({ page }) => {
-  await stubSellerBootstrap(page, ["seller"])
+  await stubSellerBootstrap(page)
   let shipped = false
-  await page.route("**/api/v1/seller/orders/ord-s1**", async (route) => {
+  await page.route(routeApiMatch("/api/v1/seller/orders/ord-s1"), async (route) => {
     const url = route.request().url()
     if (url.includes("/orders/ord-s1/ship") && route.request().method() === "POST") {
       shipped = true
@@ -206,17 +190,18 @@ test("seller ships order from order detail (@critical)", async ({ page }) => {
   })
 
   await page.goto("/seller/orders/ord-s1")
+  await expect(page.getByRole("heading", { name: "Order detail" })).toBeVisible({ timeout: 15_000 })
   await page.getByRole("button", { name: "Ship" }).first().click()
   await expect.poll(() => shipped).toBe(true)
 })
 
 test("admin approves seller application (@critical)", async ({ page }) => {
   await stubAdminSession(page)
-  await page.route("**/api/v1/admin/seller-applications", async (route) => {
+  await page.route(routeApiMatch("/api/v1/admin/seller-applications"), async (route) => {
     await mockJson(route, envelope({ items: [{ id: "app-99", status: "pending" }] }))
   })
   let reviewed = false
-  await page.route("**/api/v1/admin/seller-applications/app-99/review", async (route) => {
+  await page.route(routeApiMatch("/api/v1/admin/seller-applications/app-99/review"), async (route) => {
     reviewed = true
     await mockJson(route, envelope({ id: "app-99", decision: "approved" }))
   })

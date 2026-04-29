@@ -1,13 +1,13 @@
 import { expect, test } from "@playwright/test"
 import AxeBuilder from "@axe-core/playwright"
-import { envelope, makeFakeJWT, mockJson } from "./helpers/api-mock"
+import { envelope, makeFakeJWT, mockJson, routeApiMatch } from "./helpers/api-mock"
 
 async function stubBuyer(page: import("@playwright/test").Page) {
   const accessToken = makeFakeJWT({ roles: ["buyer"], sub: "buyer-1" })
-  await page.route("**/api/v1/auth/refresh-token", async (route) => {
+  await page.route(routeApiMatch("/api/v1/auth/refresh-token"), async (route) => {
     await mockJson(route, envelope({ access_token: accessToken, refresh_token: "r1" }))
   })
-  await page.route("**/api/v1/users/me", async (route) => {
+  await page.route(routeApiMatch("/api/v1/users/me"), async (route) => {
     await mockJson(
       route,
       envelope({
@@ -23,7 +23,7 @@ async function stubBuyer(page: import("@playwright/test").Page) {
 
 test("addresses dialog supports keyboard open/focus/escape", async ({ page }) => {
   await stubBuyer(page)
-  await page.route("**/api/v1/users/me/addresses", async (route) => {
+  await page.route(routeApiMatch("/api/v1/users/me/addresses"), async (route) => {
     await mockJson(route, envelope([]))
   })
 
@@ -39,7 +39,7 @@ test("addresses dialog supports keyboard open/focus/escape", async ({ page }) =>
 })
 
 test("search form labels and contrast are axe-clean", async ({ page }) => {
-  await page.route("**/api/v1/public/products**", async (route) => {
+  await page.route(routeApiMatch("/api/v1/public/products"), async (route) => {
     await mockJson(route, envelope({ items: [], pagination: { total_pages: 1 } }))
   })
   await page.goto("/search")

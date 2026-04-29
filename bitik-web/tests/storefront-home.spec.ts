@@ -1,11 +1,11 @@
 import { expect, test } from "@playwright/test"
 import AxeBuilder from "@axe-core/playwright"
-import { envelope, mockJson, stubAuthBootstrap } from "./helpers/api-mock"
+import { envelope, mockJson, routeApiMatch, stubAuthBootstrap } from "./helpers/api-mock"
 
 test("home renders and is accessible (mocked)", async ({ page }) => {
   await stubAuthBootstrap(page)
 
-  await page.route("**/api/v1/public/home", async (route) => {
+  await page.route(routeApiMatch("/api/v1/public/home"), async (route) => {
     await mockJson(
       route,
       envelope({

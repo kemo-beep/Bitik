@@ -1,10 +1,10 @@
 import { expect, test } from "@playwright/test"
-import { envelope, mockJson, stubAuthBootstrap } from "./helpers/api-mock"
+import { envelope, mockJson, routeApiMatch, stubAuthBootstrap, stubLoggedInSession } from "./helpers/api-mock"
 
 test("register/login critical flow (@critical)", async ({ page }) => {
   await stubAuthBootstrap(page)
   let loginCalled = false
-  await page.route("**/api/v1/auth/login", async (route) => {
+  await page.route(routeApiMatch("/api/v1/auth/login"), async (route) => {
     loginCalled = true
     await mockJson(route, envelope({ access_token: "mock", refresh_token: "mock" }))
   })
@@ -16,9 +16,9 @@ test("register/login critical flow (@critical)", async ({ page }) => {
 })
 
 test("seller apply + product publish critical flow (@critical)", async ({ page }) => {
-  await stubAuthBootstrap(page)
+  await stubLoggedInSession(page, ["buyer"], { email: "buyer@example.com" })
   let applyCalled = false
-  await page.route("**/api/v1/seller/apply", async (route) => {
+  await page.route(routeApiMatch("/api/v1/seller/apply"), async (route) => {
     applyCalled = true
     await mockJson(route, envelope({ id: "app-1", status: "submitted" }), 201)
   })
@@ -29,21 +29,32 @@ test("seller apply + product publish critical flow (@critical)", async ({ page }
 })
 
 test("buyer browse/search/cart/checkout critical flow (@critical)", async ({ page }) => {
-  await stubAuthBootstrap(page)
+  await stubLoggedInSession(page, ["buyer"], { email: "buyer@example.com" })
   let orderCalled = false
-  await page.route("**/api/v1/buyer/addresses", async (route) => {
+  await page.route(routeApiMatch("/api/v1/buyer/addresses"), async (route) => {
     await mockJson(route, envelope([{ id: "addr-1", full_name: "Buyer One", address_line1: "1 Market St", phone: "+15550001111", country: "US", is_default: true }]))
   })
-  await page.route("**/api/v1/buyer/checkout/sessions", async (route) => {
+  await page.route(routeApiMatch("/api/v1/buyer/checkout/sessions"), async (route) => {
     await mockJson(route, envelope({ id: "chk-1", checkout_session_id: "chk-1" }), 201)
   })
-  await page.route("**/api/v1/buyer/checkout/sessions/chk-1", async (route) => {
-    await mockJson(route, envelope({ id: "chk-1", shipping_address_id: "addr-1", shipping_method: "standard", payment_method: "wave_manual", summary: { total_amount: 12000, currency: "MMK" } }))
-  })
-  await page.route("**/api/v1/buyer/checkout/sessions/chk-1/**", async (route) => {
-    if (route.request().url().endsWith("/place-order")) {
+  await page.route(routeApiMatch("/api/v1/buyer/checkout/sessions/chk-1"), async (route) => {
+    const url = route.request().url()
+    if (url.endsWith("/place-order")) {
       orderCalled = true
       await mockJson(route, envelope({ order_id: "ord-1", payment_status: "paid" }), 201)
+      return
+    }
+    if (route.request().method() === "GET" && url.includes("/sessions/chk-1") && !url.includes("/place-order")) {
+      await mockJson(
+        route,
+        envelope({
+          id: "chk-1",
+          shipping_address_id: "addr-1",
+          shipping_method: "standard",
+          payment_method: "wave_manual",
+          summary: { total_amount: 12000, currency: "MMK" },
+        })
+      )
       return
     }
     await mockJson(route, envelope({ ok: true }))
@@ -54,12 +65,12 @@ test("buyer browse/search/cart/checkout critical flow (@critical)", async ({ pag
 })
 
 test("wave manual payment approval critical flow (@critical)", async ({ page }) => {
-  await stubAuthBootstrap(page)
-  await page.route("**/api/v1/admin/payments/wave/pending", async (route) =>
+  await stubLoggedInSession(page, ["admin"], { email: "admin@example.com" })
+  await page.route(routeApiMatch("/api/v1/admin/payments/wave/pending"), async (route) =>
     mockJson(route, envelope({ items: [{ id: "pay-1", status: "pending" }] }))
   )
   let approveCalled = false
-  await page.route("**/api/v1/admin/payments/pay-1/wave/approve", async (route) => {
+  await page.route(routeApiMatch("/api/v1/admin/payments/pay-1/wave/approve"), async (route) => {
     approveCalled = true
     await mockJson(route, envelope({ id: "pay-1", status: "approved" }))
   })
@@ -70,33 +81,33 @@ test("wave manual payment approval critical flow (@critical)", async ({ page }) 
 })
 
 test("POD lifecycle critical flow (@critical)", async ({ page }) => {
-  await stubAuthBootstrap(page)
-  await page.goto("/buyer/orders")
-  await expect(page).toHaveURL(/\/buyer\/orders$/)
+  await stubLoggedInSession(page, ["buyer"], { email: "buyer@example.com" })
+  await page.goto("/account/orders")
+  await expect(page).toHaveURL(/\/account\/orders$/)
 })
 
 test("seller ship order critical flow (@critical)", async ({ page }) => {
-  await stubAuthBootstrap(page)
+  await stubLoggedInSession(page, ["seller"], { email: "seller@example.com" })
   await page.goto("/seller/orders")
   await expect(page).toHaveURL(/\/seller\/orders$/)
 })
 
 test("buyer confirm received critical flow (@critical)", async ({ page }) => {
-  await stubAuthBootstrap(page)
-  await page.goto("/buyer/orders")
-  await expect(page).toHaveURL(/\/buyer\/orders$/)
+  await stubLoggedInSession(page, ["buyer"], { email: "buyer@example.com" })
+  await page.goto("/account/orders")
+  await expect(page).toHaveURL(/\/account\/orders$/)
 })
 
 test("review submission critical flow (@critical)", async ({ page }) => {
-  await stubAuthBootstrap(page)
-  await page.goto("/buyer/reviews")
-  await expect(page).toHaveURL(/\/buyer\/reviews$/)
+  await stubLoggedInSession(page, ["buyer"], { email: "buyer@example.com" })
+  await page.goto("/account/reviews")
+  await expect(page).toHaveURL(/\/account\/reviews$/)
 })
 
 test("admin moderation critical flow (@critical)", async ({ page }) => {
-  await stubAuthBootstrap(page)
+  await stubLoggedInSession(page, ["admin"], { email: "admin@example.com" })
   let moderationCalled = false
-  await page.route("**/api/v1/admin/moderation/reports**", async (route) => {
+  await page.route(routeApiMatch("/api/v1/admin/moderation/reports"), async (route) => {
     moderationCalled = true
     await mockJson(route, envelope({ items: [] }))
   })

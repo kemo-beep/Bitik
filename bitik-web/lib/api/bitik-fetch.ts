@@ -80,7 +80,12 @@ export async function bitikFetch(
     credentials: init?.credentials ?? "include",
   })
 
-  if (res.status !== 401 || opts.skipRefreshRetry || opts.skipAuth) {
+  if (
+    res.status !== 401 ||
+    opts.skipRefreshRetry ||
+    opts.skipAuth ||
+    !headers.has("Authorization")
+  ) {
     return res
   }
 

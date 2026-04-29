@@ -1,12 +1,12 @@
 import { expect, test, type Page } from "@playwright/test"
-import { envelope, makeFakeJWT, mockJson } from "./helpers/api-mock"
+import { envelope, makeFakeJWT, mockJson, routeApiMatch } from "./helpers/api-mock"
 
 async function stubSellerBootstrap(page: Page, roles: string[] = ["seller"]) {
   const accessToken = makeFakeJWT({ roles, sub: "seller-1" })
-  await page.route("**/api/v1/auth/refresh-token", async (route) => {
+  await page.route(routeApiMatch("/api/v1/auth/refresh-token"), async (route) => {
     await mockJson(route, envelope({ access_token: accessToken, refresh_token: "r1" }))
   })
-  await page.route("**/api/v1/users/me", async (route) => {
+  await page.route(routeApiMatch("/api/v1/users/me"), async (route) => {
     await mockJson(
       route,
       envelope({
@@ -23,7 +23,7 @@ async function stubSellerBootstrap(page: Page, roles: string[] = ["seller"]) {
 
 test("seller onboarding flow renders and submits application (mocked)", async ({ page }) => {
   await stubSellerBootstrap(page, ["buyer"])
-  await page.route("**/api/v1/seller/apply", async (route) => {
+  await page.route(routeApiMatch("/api/v1/seller/apply"), async (route) => {
     await mockJson(route, envelope({ id: "app-1", status: "submitted" }), 201)
   })
   await page.goto("/seller/apply")
@@ -35,7 +35,7 @@ test("seller onboarding flow renders and submits application (mocked)", async ({
 
 test("seller product management list actions render (mocked)", async ({ page }) => {
   await stubSellerBootstrap(page, ["seller"])
-  await page.route("**/api/v1/seller/products", async (route) => {
+  await page.route(routeApiMatch("/api/v1/seller/products"), async (route) => {
     await mockJson(
       route,
       envelope({
@@ -43,10 +43,10 @@ test("seller product management list actions render (mocked)", async ({ page }) 
       })
     )
   })
-  await page.route("**/api/v1/seller/products/prod-1/**", async (route) => {
+  await page.route(routeApiMatch("/api/v1/seller/products/prod-1/"), async (route) => {
     await mockJson(route, envelope({ ok: true }))
   })
-  await page.route("**/api/v1/seller/products/prod-1", async (route) => {
+  await page.route(routeApiMatch("/api/v1/seller/products/prod-1"), async (route) => {
     if (route.request().method() === "DELETE") {
       await mockJson(route, envelope({ ok: true }))
       return
@@ -63,26 +63,26 @@ test("seller product management list actions render (mocked)", async ({ page }) 
 
 test("seller wallet payout request works (mocked)", async ({ page }) => {
   await stubSellerBootstrap(page, ["seller"])
-  await page.route("**/api/v1/seller/wallet", async (route) => {
+  await page.route(routeApiMatch("/api/v1/seller/wallet"), async (route) => {
     await mockJson(route, envelope({ available_balance_cents: 123000 }))
   })
-  await page.route("**/api/v1/seller/wallet/transactions**", async (route) => {
+  await page.route(routeApiMatch("/api/v1/seller/wallet/transactions"), async (route) => {
     await mockJson(route, envelope({ items: [] }))
   })
-  await page.route("**/api/v1/seller/payouts", async (route) => {
+  await page.route(routeApiMatch("/api/v1/seller/payouts"), async (route) => {
     await mockJson(route, envelope({ items: [] }))
   })
-  await page.route("**/api/v1/seller/payouts/request", async (route) => {
+  await page.route(routeApiMatch("/api/v1/seller/payouts/request"), async (route) => {
     await mockJson(route, envelope({ id: "payout-1", status: "pending" }))
   })
-  await page.route("**/api/v1/seller/bank-accounts", async (route) => {
+  await page.route(routeApiMatch("/api/v1/seller/bank-accounts"), async (route) => {
     if (route.request().method() === "POST") {
       await mockJson(route, envelope({ id: "bank-1", bank_name: "Bitik Bank", account_number_masked: "****1234" }), 201)
       return
     }
     await mockJson(route, envelope({ items: [{ id: "bank-1", bank_name: "Bitik Bank", account_number_masked: "****1234" }] }))
   })
-  await page.route("**/api/v1/seller/bank-accounts/**", async (route) => {
+  await page.route(routeApiMatch("/api/v1/seller/bank-accounts/"), async (route) => {
     await mockJson(route, envelope({ ok: true }))
   })
 
@@ -99,16 +99,16 @@ test("seller wallet payout request works (mocked)", async ({ page }) => {
 
 test("seller inventory low-stock and adjust actions work (mocked)", async ({ page }) => {
   await stubSellerBootstrap(page, ["seller"])
-  await page.route("**/api/v1/seller/inventory/low-stock", async (route) => {
+  await page.route(routeApiMatch("/api/v1/seller/inventory/low-stock"), async (route) => {
     await mockJson(route, envelope({ items: [{ id: "inv-low-1", quantity: 1 }] }))
   })
-  await page.route("**/api/v1/seller/inventory", async (route) => {
+  await page.route(routeApiMatch("/api/v1/seller/inventory"), async (route) => {
     await mockJson(route, envelope({ items: [{ id: "inv-1", quantity: 12 }] }))
   })
-  await page.route("**/api/v1/seller/inventory/inv-1/adjust", async (route) => {
+  await page.route(routeApiMatch("/api/v1/seller/inventory/inv-1/adjust"), async (route) => {
     await mockJson(route, envelope({ id: "inv-1", quantity: 13 }))
   })
-  await page.route("**/api/v1/seller/inventory/bulk-update", async (route) => {
+  await page.route(routeApiMatch("/api/v1/seller/inventory/bulk-update"), async (route) => {
     await mockJson(route, envelope({ updated: 1 }))
   })
 
@@ -120,22 +120,22 @@ test("seller inventory low-stock and adjust actions work (mocked)", async ({ pag
 
 test("seller order transitions and shipping actions work (mocked)", async ({ page }) => {
   await stubSellerBootstrap(page, ["seller"])
-  await page.route("**/api/v1/seller/orders", async (route) => {
+  await page.route(routeApiMatch("/api/v1/seller/orders"), async (route) => {
     await mockJson(route, envelope({ items: [{ id: "ord-1", status: "pending" }] }))
   })
-  await page.route("**/api/v1/seller/orders/ord-1", async (route) => {
+  await page.route(routeApiMatch("/api/v1/seller/orders/ord-1"), async (route) => {
     await mockJson(route, envelope({ id: "ord-1", status: "pending" }))
   })
-  await page.route("**/api/v1/seller/orders/ord-1/items", async (route) => {
+  await page.route(routeApiMatch("/api/v1/seller/orders/ord-1/items"), async (route) => {
     await mockJson(route, envelope({ items: [{ id: "item-1" }] }))
   })
-  await page.route("**/api/v1/seller/orders/ord-1/shipments", async (route) => {
+  await page.route(routeApiMatch("/api/v1/seller/orders/ord-1/shipments"), async (route) => {
     await mockJson(route, envelope({ items: [{ id: "ship-1" }] }))
   })
-  await page.route("**/api/v1/seller/orders/ord-1/**", async (route) => {
+  await page.route(routeApiMatch("/api/v1/seller/orders/ord-1/"), async (route) => {
     await mockJson(route, envelope({ ok: true }))
   })
-  await page.route("**/api/v1/seller/shipments/ship-1/**", async (route) => {
+  await page.route(routeApiMatch("/api/v1/seller/shipments/ship-1/"), async (route) => {
     await mockJson(route, envelope({ ok: true }))
   })
 

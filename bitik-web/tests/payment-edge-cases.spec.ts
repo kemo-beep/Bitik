@@ -1,19 +1,19 @@
 import { expect, test } from "@playwright/test"
-import { envelope, mockJson, stubAuthBootstrap } from "./helpers/api-mock"
+import { envelope, mockJson, routeApiMatch, stubAuthBootstrap } from "./helpers/api-mock"
 
 test("payment edge cases show rejected state and allow cancel (mocked)", async ({ page }) => {
   await stubAuthBootstrap(page)
 
-  await page.route("**/api/v1/buyer/payments/create-intent", async (route) => {
+  await page.route(routeApiMatch("/api/v1/buyer/payments/create-intent"), async (route) => {
     await mockJson(route, envelope({ payment_id: "pay-1" }))
   })
-  await page.route("**/api/v1/buyer/payments/pay-1", async (route) => {
+  await page.route(routeApiMatch("/api/v1/buyer/payments/pay-1"), async (route) => {
     await mockJson(route, envelope({ id: "pay-1", status: "rejected" }))
   })
-  await page.route("**/api/v1/buyer/payments/pay-1/cancel", async (route) => {
+  await page.route(routeApiMatch("/api/v1/buyer/payments/pay-1/cancel"), async (route) => {
     await mockJson(route, envelope({ id: "pay-1", status: "cancelled" }))
   })
-  await page.route("**/api/v1/buyer/payments/confirm", async (route) => {
+  await page.route(routeApiMatch("/api/v1/buyer/payments/confirm"), async (route) => {
     await mockJson(route, envelope({ id: "pay-1", status: "pending_manual" }))
   })
 

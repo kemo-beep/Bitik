@@ -30,7 +30,6 @@ export function GuestOnly({ children }: { children: React.ReactNode }) {
     }
   }, [pathname, router, status])
 
-  if (status === "loading") return <GuardFallback title="Loading" />
   if (status === "authenticated") return <GuardFallback title="Redirecting" />
   return <>{children}</>
 }

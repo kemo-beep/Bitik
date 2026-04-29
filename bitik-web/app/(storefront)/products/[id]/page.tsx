@@ -23,14 +23,17 @@ function asNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null
 }
 
-export async function generateMetadata(
-  { params }: { params: { id: string } }
-): Promise<Metadata> {
-  const product = await fetchProductById(params.id)
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}): Promise<Metadata> {
+  const { id } = await params
+  const product = await fetchProductById(id)
   const name = asString(product?.name) ?? "Product"
   const description = asString(product?.description) ?? "Product details on Bitik."
   const slug = asString(product?.slug)
-  const canonicalPath = slug ? `/p/${encodeURIComponent(slug)}` : `/products/${params.id}`
+  const canonicalPath = slug ? `/p/${encodeURIComponent(slug)}` : `/products/${id}`
   const images = Array.isArray(product?.images)
     ? product?.images
         .map((x) => (x && typeof x === "object" ? (x as Record<string, unknown>).url : null))
@@ -58,13 +61,14 @@ export async function generateMetadata(
   }
 }
 
-export default function Page({ params }: { params: { id: string } }) {
+export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   // JSON-LD is rendered server-side so crawlers get structured data.
   // We keep the interactive UI in a client component.
   return (
     <>
-      <ProductJsonLd productId={params.id} />
-      <ProductDetailClient productId={params.id} />
+      <ProductJsonLd productId={id} />
+      <ProductDetailClient productId={id} />
     </>
   )
 }

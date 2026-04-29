@@ -19,14 +19,17 @@ function asString(value: unknown): string | null {
   return typeof value === "string" ? value : null
 }
 
-export async function generateMetadata(
-  { params }: { params: { id: string } }
-): Promise<Metadata> {
-  const seller = await fetchSellerById(params.id)
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}): Promise<Metadata> {
+  const { id } = await params
+  const seller = await fetchSellerById(id)
   const shopName = asString(seller?.shop_name) ?? "Seller"
   const description = asString(seller?.description) ?? `Shop ${shopName} on Bitik.`
   const slug = asString(seller?.slug)
-  const canonicalPath = slug ? `/shop/${encodeURIComponent(slug)}` : `/sellers/${params.id}`
+  const canonicalPath = slug ? `/shop/${encodeURIComponent(slug)}` : `/sellers/${id}`
   const banner = asString(seller?.banner_url)
   const logo = asString(seller?.logo_url)
   const images = [banner, logo].filter((x): x is string => typeof x === "string" && x.trim() !== "").slice(0, 1)
@@ -51,12 +54,14 @@ export async function generateMetadata(
   }
 }
 
-export default function Page({
+export default async function Page({
   params,
   searchParams,
 }: {
-  params: { id: string }
-  searchParams?: Record<string, string | string[] | undefined>
+  params: Promise<{ id: string }>
+  searchParams?: Promise<Record<string, string | string[] | undefined>>
 }) {
-  return <SellerClient sellerId={params.id} searchParams={searchParams ?? {}} />
+  const { id } = await params
+  const resolvedSearchParams = searchParams ? await searchParams : {}
+  return <SellerClient sellerId={id} searchParams={resolvedSearchParams} />
 }

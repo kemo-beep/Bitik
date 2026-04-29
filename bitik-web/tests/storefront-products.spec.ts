@@ -1,11 +1,11 @@
 import { expect, test } from "@playwright/test"
 import AxeBuilder from "@axe-core/playwright"
-import { envelope, mockJson, stubAuthBootstrap } from "./helpers/api-mock"
+import { envelope, mockJson, routeApiMatch, stubAuthBootstrap } from "./helpers/api-mock"
 
 test("products list paginates (mocked)", async ({ page }) => {
   await stubAuthBootstrap(page)
 
-  await page.route("**/api/v1/public/products**", async (route) => {
+  await page.route(routeApiMatch("/api/v1/public/products"), async (route) => {
     const url = new URL(route.request().url())
     const pageNum = Number(url.searchParams.get("page") ?? "1")
     const items =

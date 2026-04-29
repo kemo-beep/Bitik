@@ -50,7 +50,6 @@ func (s *Service) RegisterRoutes(v1 *gin.RouterGroup, auth *authsvc.Service) {
 
 	buyer := protected.Group("/buyer")
 	buyer.GET("/orders/:order_id/shipments", s.HandleBuyerOrderShipments)
-	buyer.GET("/orders/:order_id/tracking", s.HandleBuyerOrderTracking)
 
 	seller := protected.Group("/seller", s.requireRole("seller", "admin"), s.requireSeller())
 	seller.GET("/orders/:order_id/shipments", s.HandleSellerOrderShipments)

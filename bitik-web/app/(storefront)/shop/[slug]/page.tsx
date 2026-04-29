@@ -19,13 +19,16 @@ function asString(value: unknown): string | null {
   return typeof value === "string" ? value : null
 }
 
-export async function generateMetadata(
-  { params }: { params: { slug: string } }
-): Promise<Metadata> {
-  const seller = await fetchSellerBySlug(params.slug)
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>
+}): Promise<Metadata> {
+  const { slug } = await params
+  const seller = await fetchSellerBySlug(slug)
   const shopName = asString(seller?.shop_name) ?? "Seller"
   const description = asString(seller?.description) ?? `Shop ${shopName} on Bitik.`
-  const canonicalPath = `/shop/${encodeURIComponent(params.slug)}`
+  const canonicalPath = `/shop/${encodeURIComponent(slug)}`
   const banner = asString(seller?.banner_url)
   const logo = asString(seller?.logo_url)
   const images = [banner, logo].filter((x): x is string => typeof x === "string" && x.trim() !== "").slice(0, 1)
@@ -50,7 +53,8 @@ export async function generateMetadata(
   }
 }
 
-export default function Page({ params }: { params: { slug: string } }) {
-  return <SellerSlugClient slug={params.slug} />
+export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params
+  return <SellerSlugClient slug={slug} />
 }
 

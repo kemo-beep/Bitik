@@ -1,12 +1,12 @@
 import { expect, test, type Page } from "@playwright/test"
-import { envelope, makeFakeJWT, mockJson, stubAuthBootstrap } from "./helpers/api-mock"
+import { envelope, makeFakeJWT, mockJson, routeApiMatch, stubLoggedInSession } from "./helpers/api-mock"
 
 async function stubAdminSession(page: Page, roles: string[]) {
   const accessToken = makeFakeJWT({ roles, sub: "admin-1" })
-  await page.route("**/api/v1/auth/refresh-token", async (route) => {
+  await page.route(routeApiMatch("/api/v1/auth/refresh-token"), async (route) => {
     await mockJson(route, envelope({ access_token: accessToken, refresh_token: "r1" }))
   })
-  await page.route("**/api/v1/users/me", async (route) => {
+  await page.route(routeApiMatch("/api/v1/users/me"), async (route) => {
     await mockJson(
       route,
       envelope({
@@ -22,9 +22,9 @@ async function stubAdminSession(page: Page, roles: string[]) {
 }
 
 test("checkout place order via keyboard focus and Enter (@critical)", async ({ page }) => {
-  await stubAuthBootstrap(page)
+  await stubLoggedInSession(page, ["buyer"], { email: "buyer@example.com" })
 
-  await page.route("**/api/v1/buyer/addresses", async (route) => {
+  await page.route(routeApiMatch("/api/v1/buyer/addresses"), async (route) => {
     await mockJson(
       route,
       envelope([
@@ -39,25 +39,26 @@ test("checkout place order via keyboard focus and Enter (@critical)", async ({ p
       ])
     )
   })
-  await page.route("**/api/v1/buyer/checkout/sessions", async (route) => {
+  await page.route(routeApiMatch("/api/v1/buyer/checkout/sessions"), async (route) => {
     await mockJson(route, envelope({ id: "chk-1", checkout_session_id: "chk-1" }), 201)
   })
-  await page.route("**/api/v1/buyer/checkout/sessions/chk-1", async (route) => {
-    await mockJson(
-      route,
-      envelope({
-        id: "chk-1",
-        shipping_address_id: "addr-1",
-        shipping_method: "standard",
-        payment_method: "wave_manual",
-        summary: { total_amount: 12000, currency: "MMK" },
-      })
-    )
-  })
-  await page.route("**/api/v1/buyer/checkout/sessions/chk-1/**", async (route) => {
+  await page.route(routeApiMatch("/api/v1/buyer/checkout/sessions/chk-1"), async (route) => {
     const url = route.request().url()
     if (url.endsWith("/place-order")) {
       await mockJson(route, envelope({ order_id: "ord-kb-1", payment_status: "paid" }), 201)
+      return
+    }
+    if (route.request().method() === "GET") {
+      await mockJson(
+        route,
+        envelope({
+          id: "chk-1",
+          shipping_address_id: "addr-1",
+          shipping_method: "standard",
+          payment_method: "wave_manual",
+          summary: { total_amount: 12000, currency: "MMK" },
+        })
+      )
       return
     }
     await mockJson(route, envelope({ ok: true }))
@@ -76,11 +77,11 @@ test("checkout place order via keyboard focus and Enter (@critical)", async ({ p
 test("admin moderation Get report via keyboard (@critical)", async ({ page }) => {
   await stubAdminSession(page, ["admin"])
 
-  await page.route("**/api/v1/admin/moderation/reports", async (route) => {
+  await page.route(routeApiMatch("/api/v1/admin/moderation/reports"), async (route) => {
     await mockJson(route, envelope({ items: [{ id: "rep-1", status: "open" }] }))
   })
 
-  await page.route("**/api/v1/admin/moderation/reports/rep-1", async (route) => {
+  await page.route(routeApiMatch("/api/v1/admin/moderation/reports/rep-1"), async (route) => {
     await mockJson(route, envelope({ id: "rep-1", status: "open", reason: "spam" }))
   })
 

@@ -241,7 +241,7 @@ func (s *Service) HandleRefresh(c *gin.Context) {
 		req.RefreshToken = s.refreshTokenFromCookie(c)
 	}
 	if strings.TrimSpace(req.RefreshToken) == "" {
-		apiresponse.Error(c, http.StatusBadRequest, "invalid_body", "refresh_token is required.")
+		apiresponse.Error(c, http.StatusUnauthorized, "invalid_refresh", "Refresh token is required.")
 		return
 	}
 	pair, err := s.Refresh(c.Request.Context(), req.RefreshToken, clientMetaFromGin(c))

@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"net/url"
 	"strings"
 	"time"
 
@@ -21,8 +22,25 @@ func CORS(cfg config.CORSConfig) gin.HandlerFunc {
 		AllowOrigins:     cfg.AllowedOrigins,
 		AllowMethods:     cfg.AllowedMethods,
 		AllowHeaders:     cfg.AllowedHeaders,
+		AllowOriginFunc:  allowLocalOrigin(cfg.AllowedOrigins),
 		ExposeHeaders:    []string{"X-Request-ID"},
 		AllowCredentials: allowCreds,
 		MaxAge:           12 * time.Hour,
 	})
+}
+
+func allowLocalOrigin(allowed []string) func(string) bool {
+	return func(origin string) bool {
+		for _, item := range allowed {
+			if strings.TrimSpace(item) == origin {
+				return true
+			}
+		}
+		u, err := url.Parse(origin)
+		if err != nil {
+			return false
+		}
+		host := u.Hostname()
+		return host == "localhost" || host == "127.0.0.1" || host == "::1"
+	}
 }

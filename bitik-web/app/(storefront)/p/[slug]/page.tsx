@@ -19,13 +19,16 @@ function asString(value: unknown): string | null {
   return typeof value === "string" ? value : null
 }
 
-export async function generateMetadata(
-  { params }: { params: { slug: string } }
-): Promise<Metadata> {
-  const product = await fetchProductBySlug(params.slug)
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>
+}): Promise<Metadata> {
+  const { slug } = await params
+  const product = await fetchProductBySlug(slug)
   const name = asString(product?.name) ?? "Product"
   const description = asString(product?.description) ?? "Product details on Bitik."
-  const canonicalPath = `/p/${encodeURIComponent(params.slug)}`
+  const canonicalPath = `/p/${encodeURIComponent(slug)}`
   const images = Array.isArray(product?.images)
     ? product?.images
         .map((x) => (x && typeof x === "object" ? (x as Record<string, unknown>).url : null))
@@ -53,7 +56,8 @@ export async function generateMetadata(
   }
 }
 
-export default function Page({ params }: { params: { slug: string } }) {
-  return <ProductDetailClient productSlug={params.slug} />
+export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params
+  return <ProductDetailClient productSlug={slug} />
 }
 

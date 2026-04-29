@@ -75,7 +75,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(toSessionUser(me, r))
         setStatus("authenticated")
       } catch {
-        if (cancelled) return
+        // Always settle to guest on bootstrap failure. Skipping updates when `cancelled`
+        // (Strict Mode) leaves SSR/hydration stuck on the loading shell with no recovery.
         clearAccessToken()
         setAccessToken(null)
         setRoles([])

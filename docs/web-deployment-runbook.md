@@ -53,7 +53,7 @@ Optional **Variables**: `STAGING_NEXT_PUBLIC_FEATURE_FLAGS`, `STAGING_NEXT_PUBLI
 
 1. **Image:** `ghcr.io/<owner>/bitik-web`
 2. **Tag:** Pin staging/prod to immutable tags; use `latest` only if you accept drift.
-3. **Port:** Container listens on **3000** (`PORT` / `HOSTNAME` set in Dockerfile).
+3. **Port:** Container listens on **3000** (`PORT` / `HOSTNAME` set in Dockerfile). For local Playwright against a production build, run **`npm run build`** then **`npm run start:standalone`** from `bitik-web/`: `postbuild` copies `.next/static` and `public` into `.next/standalone`, and the script runs `node server.js` with cwd `.next/standalone` (same layout as the Docker image). Do not run `node .next/standalone/server.js` from the repo root without those copies or chunks will 404.
 4. **Health check:** HTTP GET `/` (200). Optionally add a dedicated route later (e.g. `/api/health`) and point health checks there.
 5. **Runtime secrets** (Sentry server, etc.) are separate from `NEXT_PUBLIC_*`; configure in Dockploy if the app gains server-only env.
 
@@ -69,6 +69,7 @@ Optional **Variables**: `STAGING_NEXT_PUBLIC_FEATURE_FLAGS`, `STAGING_NEXT_PUBLI
 |---------|----------------|
 | Build fails at `verify-web-build-env` | Missing or invalid URL in build-args |
 | Blank API calls in browser | Wrong `NEXT_PUBLIC_API_BASE_URL` for the environment; rebuild image |
+| `_next/static` 404 / broken client JS locally | Run `npm run build` so `postbuild` runs, then `npm run start:standalone` (not `node .next/standalone/server.js` from repo root) |
 | OAuth redirect mismatch | `NEXT_PUBLIC_OAUTH_REDIRECT_BASE_URL` must match the public web URL |
 | PR preview image push denied | Fork PRs: `GITHUB_TOKEN` may not have `packages:write` for fork workflows; build from same-repo branches or use a PAT workflow |
 | WebSocket errors | `NEXT_PUBLIC_WS_BASE_URL` must match deployed WS (scheme `ws`/`wss`) |

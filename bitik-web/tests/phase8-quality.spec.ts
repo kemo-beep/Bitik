@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test"
-import { envelope, mockJson, stubAuthBootstrap } from "./helpers/api-mock"
+import { envelope, mockJson, routeApiMatch, stubAuthBootstrap } from "./helpers/api-mock"
 
 test("language switcher toggles document direction", async ({ page }) => {
   await stubAuthBootstrap(page)
@@ -11,7 +11,16 @@ test("language switcher toggles document direction", async ({ page }) => {
 
 test("analytics ingestion fires for add-to-cart interaction (@critical)", async ({ page }) => {
   await stubAuthBootstrap(page)
-  await page.route("**/api/v1/public/products/*", async (route) => {
+  await page.route(routeApiMatch("/api/v1/public/products/p-1"), async (route) => {
+    const url = route.request().url()
+    if (url.includes("/reviews")) {
+      await mockJson(route, envelope({ items: [] }))
+      return
+    }
+    if (url.includes("/related")) {
+      await mockJson(route, envelope([]))
+      return
+    }
     await mockJson(
       route,
       envelope({
@@ -25,18 +34,12 @@ test("analytics ingestion fires for add-to-cart interaction (@critical)", async 
       })
     )
   })
-  await page.route("**/api/v1/public/products/*/reviews**", async (route) => {
-    await mockJson(route, envelope({ items: [] }))
-  })
-  await page.route("**/api/v1/public/products/*/related**", async (route) => {
-    await mockJson(route, envelope([]))
-  })
-  await page.route("**/api/v1/public/sellers/*", async (route) => {
+  await page.route(routeApiMatch("/api/v1/public/sellers/"), async (route) => {
     await mockJson(route, envelope({ id: "s-1", shop_name: "Seller One" }))
   })
 
   const events: unknown[] = []
-  await page.route("**/api/v1/analytics/events", async (route) => {
+  await page.route(routeApiMatch("/api/v1/analytics/events"), async (route) => {
     const payload = route.request().postDataJSON()
     events.push(payload)
     await mockJson(route, envelope({}))

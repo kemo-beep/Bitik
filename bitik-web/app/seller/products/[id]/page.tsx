@@ -2,6 +2,7 @@ import { SellerProductEditorClient } from "@/app/seller/products/product-editor-
 
 export const metadata = { title: "Edit product" }
 
-export default function Page({ params }: { params: { id: string } }) {
-  return <SellerProductEditorClient productId={params.id} />
+export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  return <SellerProductEditorClient productId={id} />
 }

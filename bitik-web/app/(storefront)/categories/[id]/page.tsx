@@ -5,12 +5,14 @@ export const metadata = {
   description: "Products in this category.",
 }
 
-export default function Page({
+export default async function Page({
   params,
   searchParams,
 }: {
-  params: { id: string }
-  searchParams?: Record<string, string | string[] | undefined>
+  params: Promise<{ id: string }>
+  searchParams?: Promise<Record<string, string | string[] | undefined>>
 }) {
-  return <CategoryClient categoryId={params.id} searchParams={searchParams ?? {}} />
+  const { id } = await params
+  const resolvedSearchParams = searchParams ? await searchParams : {}
+  return <CategoryClient categoryId={id} searchParams={resolvedSearchParams} />
 }

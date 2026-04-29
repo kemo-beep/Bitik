@@ -41,29 +41,25 @@ jobs:
         run: npm test
 
       - name: Build
+        env:
+          NEXT_PUBLIC_ANALYTICS_ENABLED: "1"
         run: npm run build
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
-      - name: Playwright smoke
+      - name: Playwright smoke + critical
         env:
           PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
           NEXT_PUBLIC_ANALYTICS_ENABLED: "1"
+          PORT: "3000"
+          HOSTNAME: "0.0.0.0"
         run: |
-          npm run build
-          npm run start -- --port 3000 &
+          npm run start:standalone &
           npx wait-on http://127.0.0.1:3000
           npm run test:smoke
-      - name: Playwright critical flows
-        env:
-          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
-          NEXT_PUBLIC_ANALYTICS_ENABLED: "1"
-        run: |
-          npm run build
-          npm run start -- --port 3000 &
-          npx wait-on http://127.0.0.1:3000
           npm run test:e2e -- --grep @critical
+          kill $(lsof -ti:3000) 2>/dev/null || true
 
   docker-dry-run:
     runs-on: ubuntu-latest

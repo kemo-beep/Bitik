@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test"
 import AxeBuilder from "@axe-core/playwright"
-import { envelope, makeFakeJWT, mockJson, stubAuthBootstrap } from "./helpers/api-mock"
+import { envelope, makeFakeJWT, mockJson, routeApiMatch, stubAuthBootstrap } from "./helpers/api-mock"
 
 test("login form is accessible (@smoke)", async ({ page }) => {
   await stubAuthBootstrap(page)
@@ -16,10 +16,10 @@ test("login -> me bootstrap works (mocked)", async ({ page }) => {
 
   const accessToken = makeFakeJWT({ roles: ["buyer"], sub: "user-1" })
 
-  await page.route("**/api/v1/auth/login", async (route) => {
+  await page.route(routeApiMatch("/api/v1/auth/login"), async (route) => {
     await mockJson(route, envelope({ access_token: accessToken, refresh_token: "r1" }))
   })
-  await page.route("**/api/v1/users/me", async (route) => {
+  await page.route(routeApiMatch("/api/v1/users/me"), async (route) => {
     await mockJson(
       route,
       envelope({

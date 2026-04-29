@@ -238,7 +238,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("http.write_timeout", "15s")
 	v.SetDefault("http.shutdown_timeout", "10s")
 
-	v.SetDefault("cors.allowed_origins", []string{"http://localhost:3000", "http://localhost:5173"})
+	v.SetDefault("cors.allowed_origins", []string{"http://localhost:3000", "http://localhost:3012", "http://localhost:3100", "http://localhost:5173"})
 	v.SetDefault("cors.allowed_methods", []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"})
 	v.SetDefault("cors.allowed_headers", []string{"Authorization", "Content-Type", "Idempotency-Key", "X-Request-ID", "X-Device-Id", "X-Platform", "X-App-Version"})
 

@@ -1,8 +1,11 @@
 # Monorepo — merged from bitik-web, bitik-mobile, backend
 
+# Editor / local tooling
+.cursor/
+
 # Dependencies
 node_modules/
-/.pnp
+.pnp
 .pnp.*
 .yarn/*
 !.yarn/patches
@@ -19,25 +22,27 @@ node_modules/
 /backend/bin/
 
 # Next.js (bitik-web)
-.next/
-out/
+bitik-web/.next/
+bitik-web/out/
 bitik-web/build
-coverage/
+bitik-web/coverage/
+bitik-web/next-env.d.ts
 
 # Expo / React Native (bitik-mobile)
-.expo/
-dist/
-web-build/
-expo-env.d.ts
-.kotlin/
+bitik-mobile/.expo/
+bitik-mobile/dist/
+bitik-mobile/web-build/
+bitik-mobile/expo-env.d.ts
+bitik-mobile/.kotlin/
+bitik-mobile/.metro-health-check*
+bitik-mobile/app-example
+# Native / signing artifacts (match anywhere; rarely used outside mobile)
 *.orig.*
 *.jks
 *.p8
 *.p12
 *.key
 *.mobileprovision
-.metro-health-check*
-app-example
 /bitik-mobile/ios
 /bitik-mobile/android
 
@@ -54,6 +59,5 @@ pnpm-debug.log*
 # Env (local overrides)
 .env*.local
 
-# TypeScript
+# TypeScript (repo-wide generated caches)
 *.tsbuildinfo
-next-env.d.ts

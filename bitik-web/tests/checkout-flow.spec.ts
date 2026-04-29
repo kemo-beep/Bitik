@@ -1,10 +1,10 @@
 import { expect, test } from "@playwright/test"
-import { envelope, mockJson, stubAuthBootstrap } from "./helpers/api-mock"
+import { envelope, mockJson, routeApiMatch, stubLoggedInSession } from "./helpers/api-mock"
 
 test("checkout flow places order (mocked)", async ({ page }) => {
-  await stubAuthBootstrap(page)
+  await stubLoggedInSession(page, ["buyer"], { email: "buyer@example.com" })
 
-  await page.route("**/api/v1/buyer/addresses", async (route) => {
+  await page.route(routeApiMatch("/api/v1/buyer/addresses"), async (route) => {
     await mockJson(
       route,
       envelope([
@@ -19,25 +19,26 @@ test("checkout flow places order (mocked)", async ({ page }) => {
       ])
     )
   })
-  await page.route("**/api/v1/buyer/checkout/sessions", async (route) => {
+  await page.route(routeApiMatch("/api/v1/buyer/checkout/sessions"), async (route) => {
     await mockJson(route, envelope({ id: "chk-1", checkout_session_id: "chk-1" }), 201)
   })
-  await page.route("**/api/v1/buyer/checkout/sessions/chk-1", async (route) => {
-    await mockJson(
-      route,
-      envelope({
-        id: "chk-1",
-        shipping_address_id: "addr-1",
-        shipping_method: "standard",
-        payment_method: "wave_manual",
-        summary: { total_amount: 12000, currency: "MMK" },
-      })
-    )
-  })
-  await page.route("**/api/v1/buyer/checkout/sessions/chk-1/**", async (route) => {
+  await page.route(routeApiMatch("/api/v1/buyer/checkout/sessions/chk-1"), async (route) => {
     const url = route.request().url()
     if (url.endsWith("/place-order")) {
       await mockJson(route, envelope({ order_id: "ord-1", payment_status: "paid" }), 201)
+      return
+    }
+    if (route.request().method() === "GET") {
+      await mockJson(
+        route,
+        envelope({
+          id: "chk-1",
+          shipping_address_id: "addr-1",
+          shipping_method: "standard",
+          payment_method: "wave_manual",
+          summary: { total_amount: 12000, currency: "MMK" },
+        })
+      )
       return
     }
     await mockJson(route, envelope({ ok: true }))

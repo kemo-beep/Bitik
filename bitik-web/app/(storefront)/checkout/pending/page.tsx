@@ -1,14 +1,17 @@
 import Link from "next/link"
 import { routes } from "@/lib/routes"
 
+export const dynamic = "force-dynamic"
+
 export const metadata = { title: "Awaiting confirmation" }
 
-export default function Page({
+export default async function Page({
   searchParams,
 }: {
-  searchParams?: Record<string, string | string[] | undefined>
+  searchParams?: Promise<Record<string, string | string[] | undefined>>
 }) {
-  const orderId = typeof searchParams?.order_id === "string" ? searchParams.order_id : ""
+  const sp = searchParams ? await searchParams : {}
+  const orderId = typeof sp.order_id === "string" ? sp.order_id : ""
   return (
     <div className="mx-auto max-w-screen-md px-4 py-10">
       <h1 className="font-heading text-2xl font-semibold">Awaiting manual confirmation</h1>

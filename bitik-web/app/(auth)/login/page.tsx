@@ -1,7 +1,8 @@
 "use client"
 
+import * as React from "react"
 import Link from "next/link"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -28,9 +29,13 @@ type Values = z.infer<typeof Schema>
 
 export default function Page() {
   const router = useRouter()
-  const search = useSearchParams()
-  const redirectTo = search.get("redirect") || routes.storefront.home
+  const [redirectTo, setRedirectTo] = React.useState<string>(routes.storefront.home)
   const auth = useAuth()
+
+  React.useEffect(() => {
+    const next = new URLSearchParams(window.location.search).get("redirect")
+    if (next) setRedirectTo(next)
+  }, [])
 
   const form = useForm<Values>({
     resolver: zodResolver(Schema),

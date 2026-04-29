@@ -7,8 +7,12 @@ import { sellerApi } from "@/lib/api/seller"
 import { adminApi } from "@/lib/api/admin"
 import { queryKeys } from "@/lib/queryKeys"
 import { asNumber } from "@/lib/safe"
+import { useAuth } from "@/lib/auth/auth-context"
 
 export function UnreadIndicator({ scope }: { scope: "buyer" | "seller" | "admin" }) {
+  const { status } = useAuth()
+  const enabled = status === "authenticated"
+
   const query = useQuery({
     queryKey:
       scope === "buyer"
@@ -21,7 +25,8 @@ export function UnreadIndicator({ scope }: { scope: "buyer" | "seller" | "admin"
       if (scope === "seller") return sellerApi.getNotificationsUnread()
       return adminApi.getNotificationsUnread()
     },
-    refetchInterval: 15_000,
+    enabled,
+    refetchInterval: enabled ? 15_000 : false,
   })
 
   const unread = asNumber((query.data as Record<string, unknown> | undefined)?.unread ?? 0) ?? 0

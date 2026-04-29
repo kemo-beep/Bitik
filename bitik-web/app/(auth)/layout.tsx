@@ -1,3 +1,4 @@
+import { Suspense } from "react"
 import Link from "next/link"
 import { A11Y } from "@/lib/a11y"
 import { routes } from "@/lib/routes"
@@ -30,7 +31,11 @@ export default function AuthLayout({
         role="main"
         className="flex flex-1 items-center justify-center px-4 py-10"
       >
-        <div className="w-full max-w-sm">{children}</div>
+        <div className="w-full max-w-sm">
+          <Suspense fallback={<p className="text-center text-sm text-muted-foreground">Loading…</p>}>
+            {children}
+          </Suspense>
+        </div>
       </main>
       </div>
     </GuestOnly>

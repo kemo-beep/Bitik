@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test"
 import AxeBuilder from "@axe-core/playwright"
-import { envelope, mockJson, stubAuthBootstrap } from "./helpers/api-mock"
+import { envelope, mockJson, routeApiMatch, stubAuthBootstrap } from "./helpers/api-mock"
 
 test("product detail loads (mocked)", async ({ page }) => {
   await stubAuthBootstrap(page)
@@ -8,7 +8,7 @@ test("product detail loads (mocked)", async ({ page }) => {
   const productId = "00000000-0000-0000-0000-000000000301"
   const sellerId = "00000000-0000-0000-0000-000000000401"
 
-  await page.route("**/api/v1/public/products/**", async (route) => {
+  await page.route(routeApiMatch("/api/v1/public/products/"), async (route) => {
     const url = route.request().url()
     // Handle the base product detail request; let review/related handlers handle their own routes.
     if (url.includes(`/public/products/${productId}`) && !url.includes("/reviews") && !url.includes("/related")) {
@@ -61,7 +61,7 @@ test("product detail loads (mocked)", async ({ page }) => {
     )
   })
 
-  await page.route(`**/api/v1/public/sellers/${sellerId}**`, async (route) => {
+  await page.route(routeApiMatch(`/api/v1/public/sellers/${sellerId}`), async (route) => {
     await mockJson(
       route,
       envelope({
