@@ -1,8 +1,20 @@
-export type Locale = "en" | "ar"
+export type Locale = "en" | "ar" | "fr"
 
 export const localeDirection: Record<Locale, "ltr" | "rtl"> = {
   en: "ltr",
   ar: "rtl",
+  fr: "ltr",
+}
+
+/** BCP 47-ish tags for Intl formatters (numbers, dates). */
+export const formatLocaleByAppLocale: Record<Locale, string> = {
+  en: "en-US",
+  ar: "ar",
+  fr: "fr-FR",
+}
+
+export function isLocale(value: string | null | undefined): value is Locale {
+  return value === "en" || value === "ar" || value === "fr"
 }
 
 export const messages: Record<Locale, Record<string, string>> = {
@@ -73,6 +85,40 @@ export const messages: Record<Locale, Record<string, string>> = {
     "nav.searchPlaceholder": "ابحث عن المنتجات والعلامات والمزيد",
     "offline.message": "أنت غير متصل. قد لا تعمل بعض الإجراءات.",
     "session.stale": "انتهت الجلسة. يرجى تسجيل الدخول مرة أخرى.",
+  },
+  fr: {
+    "common.language": "Langue",
+    "nav.categories": "Catégories",
+    "nav.brands": "Marques",
+    "nav.products": "Produits",
+    "nav.signIn": "Se connecter",
+    "nav.login": "Connexion",
+    "nav.register": "Créer un compte",
+    "nav.more": "Plus",
+    "nav.cart": "Panier",
+    "nav.wishlist": "Favoris",
+    "nav.notifications": "Notifications",
+    "nav.locationUnset": "Lieu non défini",
+    "nav.selectLocation": "Choisir une adresse de livraison ›",
+    "nav.forYou": "Pour vous",
+    "nav.fashion": "Mode",
+    "nav.mobiles": "Mobiles",
+    "nav.beauty": "Beauté",
+    "nav.electronics": "Électronique",
+    "nav.home": "Maison",
+    "nav.appliances": "Électroménager",
+    "nav.toys": "Jouets, puériculture",
+    "nav.food": "Alimentation & santé",
+    "nav.auto": "Accessoires auto",
+    "nav.twoWheelers": "Deux-roues",
+    "nav.sports": "Sport & plus",
+    "nav.books": "Livres & plus",
+    "nav.furniture": "Meubles",
+    "nav.categoryNav": "Catégories boutique",
+    "nav.searchLabel": "Rechercher sur Bitik",
+    "nav.searchPlaceholder": "Rechercher des produits, des marques et plus",
+    "offline.message": "Vous êtes hors ligne. Certaines actions peuvent être indisponibles.",
+    "session.stale": "Session expirée. Veuillez vous reconnecter.",
   },
 }
 

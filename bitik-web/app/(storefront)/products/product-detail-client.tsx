@@ -283,7 +283,7 @@ export function ProductDetailClient({
                 Browse more
               </Link>
             </div>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
               {related.isLoading ? (
                 Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-32 rounded-xl" />)
               ) : related.isError ? (
@@ -304,4 +304,3 @@ export function ProductDetailClient({
     </div>
   )
 }
-

@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { localeDirection, messages, type Locale } from "@/lib/i18n/messages"
+import { formatLocaleByAppLocale, isLocale, localeDirection, messages, type Locale } from "@/lib/i18n/messages"
 import { setDefaultFormatLocale } from "@/lib/format"
 
 const STORAGE_KEY = "bitik.locale.v1"
@@ -25,7 +25,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
 
   React.useEffect(() => {
     const stored = typeof window !== "undefined" ? window.localStorage.getItem(STORAGE_KEY) : null
-    if (stored === "en" || stored === "ar") setLocaleState(stored)
+    if (isLocale(stored)) setLocaleState(stored)
   }, [])
 
   React.useEffect(() => {
@@ -36,7 +36,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     if (typeof window !== "undefined") {
       window.localStorage.setItem(STORAGE_KEY, locale)
     }
-    setDefaultFormatLocale(locale === "ar" ? "ar" : "en-US")
+    setDefaultFormatLocale(formatLocaleByAppLocale[locale])
   }, [locale])
 
   const setLocale = React.useCallback((next: Locale) => setLocaleState(next), [])

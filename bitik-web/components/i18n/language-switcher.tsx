@@ -11,9 +11,15 @@ export function LanguageSwitcher() {
         aria-label={t("common.language")}
         className="h-8 rounded border bg-background px-2 text-xs text-foreground"
         value={locale}
-        onChange={(e) => setLocale(e.target.value === "ar" ? "ar" : "en")}
+        onChange={(e) => {
+          const v = e.target.value
+          if (v === "ar") setLocale("ar")
+          else if (v === "fr") setLocale("fr")
+          else setLocale("en")
+        }}
       >
         <option value="en">EN</option>
+        <option value="fr">FR</option>
         <option value="ar">AR</option>
       </select>
     </label>

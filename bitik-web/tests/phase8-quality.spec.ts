@@ -1,12 +1,18 @@
 import { expect, test } from "@playwright/test"
 import { envelope, mockJson, routeApiMatch, stubAuthBootstrap } from "./helpers/api-mock"
 
-test("language switcher toggles document direction", async ({ page }) => {
+test("stored locale updates document lang and direction", async ({ page }) => {
   await stubAuthBootstrap(page)
   await page.goto("/")
   await expect(page.locator("html")).toHaveAttribute("dir", "ltr")
-  await page.getByLabel("Language").selectOption("ar")
+  await page.evaluate(() => window.localStorage.setItem("bitik.locale.v1", "ar"))
+  await page.reload()
   await expect(page.locator("html")).toHaveAttribute("dir", "rtl")
+  await expect(page.locator("html")).toHaveAttribute("lang", "ar")
+  await page.evaluate(() => window.localStorage.setItem("bitik.locale.v1", "fr"))
+  await page.reload()
+  await expect(page.locator("html")).toHaveAttribute("dir", "ltr")
+  await expect(page.locator("html")).toHaveAttribute("lang", "fr")
 })
 
 test("analytics ingestion fires for add-to-cart interaction (@critical)", async ({ page }) => {

@@ -186,6 +186,9 @@ export function StorefrontHeader() {
                 <DropdownMenuItem closeOnClick={false} onClick={() => setLocale("en")}>
                   English {locale === "en" ? "✓" : ""}
                 </DropdownMenuItem>
+                <DropdownMenuItem closeOnClick={false} onClick={() => setLocale("fr")}>
+                  Français {locale === "fr" ? "✓" : ""}
+                </DropdownMenuItem>
                 <DropdownMenuItem closeOnClick={false} onClick={() => setLocale("ar")}>
                   العربية {locale === "ar" ? "✓" : ""}
                 </DropdownMenuItem>
@@ -210,7 +213,7 @@ export function StorefrontHeader() {
           aria-label={t("nav.categoryNav")}
           className="no-scrollbar flex overflow-x-auto border-t border-border/50 px-2 py-1 sm:px-4 lg:px-6"
         >
-          <ul className="flex min-w-max items-stretch gap-1 px-1 py-1 sm:gap-2">
+          <ul className="flex min-w-max items-stretch gap-0.5 px-1 py-1 sm:gap-1.5">
             {stripItems.map(({ href, label, icon: Icon }) => {
               const wantQ = href.includes("?") ? new URL(href, "https://example.com").searchParams.get("q") : null
               const active =
@@ -225,24 +228,31 @@ export function StorefrontHeader() {
                   <Link
                     href={href}
                     className={cn(
-                      "flex min-w-[4rem] flex-col items-center gap-1 rounded-lg px-1.5 py-1 text-center text-xs font-medium text-muted-foreground transition-colors hover:text-foreground sm:min-w-[5rem] sm:px-2 sm:text-sm",
+                      "flex min-w-[4rem] flex-col items-center gap-1 rounded-md px-1 py-1 text-center text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground sm:min-w-[4.75rem] sm:px-1.5 sm:text-sm",
                       active &&
                         "text-foreground after:mx-auto after:mt-0.5 after:block after:h-1 after:w-10 after:rounded-full after:bg-[#2874F0] after:content-[''] dark:after:bg-sky-400"
                     )}
                   >
                     <span
                       className={cn(
-                        "grid size-11 place-items-center rounded-lg border border-transparent text-muted-foreground",
-                        active && "border-sky-100 bg-sky-50 text-foreground dark:border-sky-800 dark:bg-sky-950/60"
+                        "grid size-10 place-items-center rounded-md border border-border/60 bg-muted/20 text-muted-foreground transition-colors",
+                        active
+                          ? "border-cyan-500/35 bg-cyan-500/8 text-foreground dark:border-cyan-400/35 dark:bg-cyan-400/10"
+                          : "hover:border-border hover:bg-muted/40"
                       )}
                     >
                       <Icon
-                        className="size-6 shrink-0 text-yellow-500 dark:text-yellow-400"
+                        className={cn(
+                          "size-5 shrink-0 transition-colors",
+                          active
+                            ? "text-amber-400 dark:text-amber-300"
+                            : "text-amber-500/90 dark:text-amber-300/90"
+                        )}
                         strokeWidth={1.75}
                         aria-hidden
                       />
                     </span>
-                    <span className={cn("max-w-[5.5rem] truncate", active && "font-semibold text-foreground")}>
+                    <span className={cn("max-w-[5rem] truncate", active && "font-semibold text-foreground")}>
                       {label}
                     </span>
                   </Link>

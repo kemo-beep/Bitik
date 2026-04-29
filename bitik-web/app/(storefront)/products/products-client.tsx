@@ -109,7 +109,7 @@ export function ProductsClient({
   return (
     <div className="mx-auto w-full max-w-screen-2xl px-4 py-6 lg:px-6">
       <header className="flex flex-col gap-4 border-b pb-5 md:flex-row md:items-end md:justify-between">
-        <div>
+        <div className="max-w-sm">
           <h1 className="font-heading text-2xl font-semibold tracking-tight">
             Products
           </h1>
@@ -120,32 +120,32 @@ export function ProductsClient({
 
         <form
           method="GET"
-          className="grid gap-2 sm:grid-cols-[minmax(220px,1fr)_120px_120px_110px_auto_auto] sm:items-center"
+          className="grid gap-2 xs:grid-cols-2 md:flex md:flex-1 md:flex-wrap md:items-center md:justify-end"
         >
           <Input
             name="q"
             placeholder="Search products"
             defaultValue={q}
-            className="sm:w-64"
+            className="xs:col-span-2 md:w-60 lg:w-72"
           />
           <Input
             name="min_price_cents"
             inputMode="numeric"
             placeholder="Min (cents)"
             defaultValue={minPrice}
-            className="sm:w-40"
+            className="min-w-0 md:w-32"
           />
           <Input
             name="max_price_cents"
             inputMode="numeric"
             placeholder="Max (cents)"
             defaultValue={maxPrice}
-            className="sm:w-40"
+            className="min-w-0 md:w-32"
           />
           <select
             name="sort"
             defaultValue={sort}
-            className="h-8 rounded-md border bg-background px-2.5 text-sm"
+            className="h-9 min-w-0 rounded-md border bg-background px-2.5 text-sm md:w-32"
             aria-label="Sort products"
           >
             <option value="">Sort</option>
@@ -157,10 +157,13 @@ export function ProductsClient({
           </select>
           <input type="hidden" name="page" value="1" />
           <input type="hidden" name="per_page" value={String(perPage)} />
-          <Button type="submit">Apply</Button>
+          <Button type="submit" className="w-full xs:w-auto">
+            Apply
+          </Button>
           <Button
             type="button"
             variant="ghost"
+            className="w-full xs:w-auto"
             onClick={() => {
               // Reset by navigating to base route.
               window.location.href = pathname
@@ -183,13 +186,13 @@ export function ProductsClient({
 
       <section className="mt-5">
         {products.isLoading ? (
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
             {Array.from({ length: 12 }).map((_, i) => (
               <Skeleton key={i} className="aspect-[4/5] rounded-md" />
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
             {items.length ? (
               items.map((p, i) => <ProductCard key={String(i)} product={p} />)
             ) : (

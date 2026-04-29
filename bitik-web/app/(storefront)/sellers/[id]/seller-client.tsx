@@ -128,7 +128,7 @@ export function SellerClient({
         </div>
 
         {products.isLoading ? (
-          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
             {Array.from({ length: 8 }).map((_, i) => (
               <Skeleton key={i} className="h-32 rounded-xl" />
             ))}
@@ -142,7 +142,7 @@ export function SellerClient({
             .
           </div>
         ) : (
-          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
             {items.length ? (
               items.map((p, i) => <ProductCard key={String(i)} product={p} />)
             ) : (
@@ -203,4 +203,3 @@ export function SellerClient({
     </div>
   )
 }
-

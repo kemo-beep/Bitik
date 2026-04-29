@@ -30,36 +30,37 @@ export function ProductCard({ product }: { product: unknown }) {
   return (
     <Link
       href={href}
-      className="group grid h-full grid-rows-[auto_1fr] overflow-hidden rounded-md border bg-card transition-colors hover:border-foreground/25 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+      className="group grid h-full grid-rows-[auto_1fr] overflow-hidden rounded-[1.6rem] border bg-card transition-colors hover:border-foreground/25 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+      style={{ borderRadius: "30px" }}
     >
-      <div className="relative aspect-[4/5] overflow-hidden bg-muted">
+      <div className="relative aspect-[1/1] overflow-hidden bg-muted">
         {imageUrl ? (
           <Image
             src={imageUrl}
             alt={name}
             fill
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-            className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+            className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
           />
         ) : (
           <div className="absolute inset-0 bg-[linear-gradient(135deg,var(--muted)_0%,var(--background)_100%)]" />
         )}
-        <div className="absolute top-2 left-2 rounded-sm bg-background/90 px-1.5 py-0.5 text-[11px] font-medium">
+        <div className="absolute top-2 left-2 rounded-full bg-background/90 px-1.5 py-0.5 text-[10px] font-medium">
           {Number.isFinite(rating) && rating > 0
             ? `${rating.toFixed(1)} ★`
             : "New"}
         </div>
       </div>
-      <div className="flex min-h-24 flex-col gap-1.5 p-3">
-        <div className="line-clamp-2 text-sm leading-snug font-medium">
+      <div className="flex min-h-18 flex-col gap-0.5 p-2">
+        <div className="line-clamp-2 text-[13px] leading-snug font-medium">
           {name}
         </div>
-        <div className="mt-auto font-semibold">
+        <div className="mt-auto text-[15px] font-semibold tracking-tight sm:text-base">
           {formatMoneyRange(minCents / 100, maxCents / 100, { currency })}
         </div>
-        <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-          <span>{formatNumber(reviewCount)} reviews</span>
-          <span>{formatNumber(sold)} sold</span>
+        <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground sm:text-[11px]">
+          <span className="truncate">{formatNumber(reviewCount)} reviews</span>
+          <span className="shrink-0">{formatNumber(sold)} sold</span>
         </div>
       </div>
     </Link>
